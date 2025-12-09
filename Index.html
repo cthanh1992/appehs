@@ -14,7 +14,6 @@
         .menu-card { transition: all 0.2s ease-in-out; }
         .menu-card:active { transform: scale(0.95); }
         
-        /* [ĐÃ SỬA] Thêm !important để thắng Tailwind */
         #toast-container { transition: all 0.3s ease-in-out; }
         .toast-show { transform: translateY(0) !important; opacity: 1 !important; }
         .toast-hide { transform: translateY(150%) !important; opacity: 0 !important; }
@@ -116,6 +115,18 @@
             if (item.type === 'FOLDER') { navigationStack.push(item.id); currentParentName = item.name; renderMenu(item.id); } else { openAction(item); }
         }
 
+        // --- HÀM NẠP MODULE AN TOÀN (Đây là bí quyết để hết lỗi) ---
+        function safeLoadModule(htmlContent) {
+            const mainContainer = document.getElementById('main-container');
+            // Dùng ContextualFragment để chạy script tự nhiên, không bị lỗi cú pháp
+            const range = document.createRange();
+            range.selectNode(mainContainer);
+            const fragment = range.createContextualFragment(htmlContent);
+            
+            mainContainer.innerHTML = ''; // Xóa nội dung cũ
+            mainContainer.appendChild(fragment); // Chèn nội dung mới
+        }
+
         function openAction(item) {
             if(item.action && item.action.startsWith('http')) {
                 window.open(item.action, '_blank');
@@ -125,15 +136,12 @@
             // 1. MODULE TRA CỨU MSDS
             if (item.action === 'OPEN_MSDS') {
                 document.getElementById('loading').classList.remove('hidden');
-                google.script.run.withSuccessHandler(function(htmlContent) {
-                    const mainContainer = document.getElementById('main-container');
-                    mainContainer.innerHTML = htmlContent;
-                    activateScripts(mainContainer); // Tái sử dụng hàm kích hoạt script
-                    
+                google.script.run.withSuccessHandler(function(html) {
+                    safeLoadModule(html);
                     document.getElementById('loading').classList.add('hidden');
                     document.getElementById('current-path').innerText = "Tra cứu MSDS";
                     document.getElementById('btn-back').classList.remove('hidden');
-                    window.goBack = function() { loadDataFromSheet(); }; // Reset nút Back
+                    window.goBack = function() { loadDataFromSheet(); };
                 }).loadMsdsModule();
                 return;
             }
@@ -142,10 +150,7 @@
             if (item.action === 'OPEN_STATS') {
                 document.getElementById('loading').classList.remove('hidden');
                 google.script.run.withSuccessHandler(function(html) {
-                     const mainContainer = document.getElementById('main-container');
-                     mainContainer.innerHTML = html;
-                     activateScripts(mainContainer);
-
+                     safeLoadModule(html);
                      document.getElementById('loading').classList.add('hidden');
                      document.getElementById('current-path').innerText = "Thống kê";
                      document.getElementById('btn-back').classList.remove('hidden');
@@ -154,14 +159,11 @@
                 return;
             }
 
-            // 3. [MỚI] MODULE TRA CỨU LUẬT (LEGAL)
+            // 3. MODULE TRA CỨU LUẬT (LEGAL)
             if (item.action === 'OPEN_LEGAL') {
                 document.getElementById('loading').classList.remove('hidden');
                 google.script.run.withSuccessHandler(function(html) {
-                     const mainContainer = document.getElementById('main-container');
-                     mainContainer.innerHTML = html;
-                     activateScripts(mainContainer);
-
+                     safeLoadModule(html);
                      document.getElementById('loading').classList.add('hidden');
                      document.getElementById('current-path').innerText = "Tra cứu Luật";
                      document.getElementById('btn-back').classList.remove('hidden');
@@ -178,24 +180,10 @@
             }
         }
 
-        // Hàm hỗ trợ kích hoạt thẻ <script> khi load nội dung mới
-        function activateScripts(container) {
-            const scripts = container.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                oldScript.parentNode.replaceChild(newScript, oldScript);
-            });
-        }
-
         function showChecklistModule(menuID, menuName) {
             document.getElementById('loading').classList.remove('hidden');
-            google.script.run.withSuccessHandler(function(htmlContent) {
-                const mainContainer = document.getElementById('main-container');
-                mainContainer.innerHTML = htmlContent;
-                activateScripts(mainContainer);
-
+            google.script.run.withSuccessHandler(function(html) {
+                safeLoadModule(html);
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('current-path').innerText = menuName;
                 document.getElementById('btn-back').classList.remove('hidden');
