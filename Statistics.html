@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    /* --- CSS CŨ (GIỮ NGUYÊN) --- */
+    .tab-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .tab-item { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s; cursor: pointer; user-select: none; }
+    .tab-item i { margin-right: 6px; font-size: 14px; }
+    .tab-item.active { background: #059669; color: white; border-color: #059669; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2); transform: translateY(-1px); }
+    
+    .stat-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.1s; }
+    .stat-card:active { transform: scale(0.98); background: #f8fafc; }
+    .border-l-status { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .status-pass .border-l-status { background: #10b981; }
+    .status-fail .border-l-status { background: #ef4444; }
+    .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+    .card-location { font-size: 15px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+    .card-area { font-size: 12px; color: #64748b; font-weight: 500; display: flex; align-items: center; margin-top: 2px; }
+    .divider { height: 1px; background: #f1f5f9; margin: 10px 0; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .inspector-info { display: flex; align-items: center; gap: 8px; }
+    .inspector-avatar { width: 24px; height: 24px; background: #e2e8f0; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #64748b; font-size: 12px; }
+    .inspector-name { font-size: 12px; font-weight: 600; color: #334155; }
+    .check-time { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+    .badge-pass { background: #d1fae5; color: #047857; }
+    .badge-fail { background: #fee2e2; color: #b91c1c; }
+    .error-count { background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; margin-left: 6px; }
+    
+    .time-btn { flex: 1; padding: 10px 0; border-radius: 10px; font-size: 12px; font-weight: 600; background: #f8fafc; color: #64748b; border: 1px solid transparent; }
+    .time-btn.active { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(2px); }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal-content-sheet { background: white; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; max-height: 85vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    .modal-overlay.open .modal-content-sheet { transform: translateY(0); }
+    .modal-header { padding: 16px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 16px; overflow-y: auto; }
+    .issue-item { background: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .issue-q { font-size: 13px; font-weight: 700; color: #7f1d1d; margin-bottom: 4px; }
+    .issue-note { font-size: 12px; color: #4b5563; background: white; padding: 6px; border-radius: 6px; border: 1px solid #e5e7eb; display: inline-block; margin-top: 4px;}
+    .issue-imgs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+    .issue-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid #e5e7eb; cursor: zoom-in; flex-shrink: 0; background-color: #f3f4f6; }
+    .modal-close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #64748b; }
+    .no-issue { text-align: center; padding: 20px; color: #059669; font-weight: 500; background: #ecfdf5; border-radius: 12px; border: 1px dashed #10b981; }
+
+    /* --- [ĐÃ SỬA] CSS CHO MODAL XEM ẢNH FULL MÀN HÌNH --- */
+    /* Lỗi cũ: thiếu dấu chấm (.) trước tên class */
+    .modal-image-viewer {
+      display: none; /* Mặc định ẩn */
+      position: fixed; 
+      z-index: 9999; 
+      left: 0;
+      top: 0;
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; /* Ẩn thanh cuộn thừa */
+      background-color: rgba(0,0,0,0.9); 
+      
+      /* Kỹ thuật căn giữa tuyệt đối (Flexbox) */
+      align-items: center;    /* Căn giữa dọc */
+      justify-content: center; /* Căn giữa ngang */
+    }
+
+    /* Ảnh phóng to */
+    .modal-image-content {
+      width: auto;
+      height: auto;
+      max-width: 95%;  /* Không bao giờ vượt quá màn hình */
+      max-height: 95%; /* Không bao giờ vượt quá chiều cao */
+      object-fit: contain; /* Giữ đúng tỉ lệ ảnh */
+      
+      animation-name: zoom;
+      animation-duration: 0.4s;
+    }
+
+    @keyframes zoom {
+      from {transform:scale(0)} 
+      to {transform:scale(1)}
+    }
+
+    /* Nút đóng (x) */
+    .close-img-btn {
+      position: absolute;
+      top: 15px;
+      right: 35px;
+      color: #f1f1f1;
+      font-size: 40px;
+      font-weight: bold;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    .close-img-btn:hover,
+    .close-img-btn:focus {
+      color: #bbb;
+      text-decoration: none;
+    }
+
+    /* Tối ưu cho điện thoại */
+    @media only screen and (max-width: 700px){
+      .modal-image-content {
+        width: 100%; /* Trên đt thì ảnh rộng 100% */
+      }
+      .modal-image-viewer {
+         padding-top: 50%; /* Căn giữa dọc cho điện thoại */
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans select-none overflow-hidden">
+
+  <div class="h-screen flex flex-col p-4 max-w-2xl mx-auto">
+    <div class="mb-4 flex-shrink-0">
+      <div class="flex justify-between items-center mb-2 px-1">
+        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Phiếu kiểm tra</label>
+        <div id="loading-tabs" class="text-[10px] text-emerald-600 animate-pulse font-bold">Đang tải...</div>
+      </div>
+      <div id="checklist-tabs" class="tab-container"></div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto pr-1 pb-20 no-scrollbar">
+      <div id="time-section" class="hidden mb-4 animate-fade-in">
+        <div class="flex gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100" id="time-btns-container"></div>
+        <div id="custom-picker" class="hidden mt-2 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex gap-2 mb-2">
+            <div class="w-1/2"><span class="text-[10px] text-gray-400">Từ</span><input type="date" id="d-start" class="w-full p-1 border rounded text-xs bg-gray-50"></div>
+            <div class="w-1/2"><span class="text-[10px] text-gray-400">Đến</span><input type="date" id="d-end" class="w-full p-1 border rounded text-xs bg-gray-50"></div>
+          </div>
+          <button onclick="loadData('CUSTOM')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow hover:bg-emerald-700">Xác nhận</button>
+        </div>
+      </div>
+
+      <div id="result-list" class="space-y-3">
+        <div class="flex flex-col items-center justify-center h-40 text-gray-300">
+          <i class="ph ph-hand-tap text-4xl mb-2 opacity-40"></i>
+          <p class="text-xs font-medium">Chọn phiếu để xem dữ liệu</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal-overlay" onclick="closeModal()">
+    <div class="modal-content-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <div id="m-location" class="text-sm font-bold text-gray-800">Thông tin</div>
+          <div id="m-time" class="text-xs text-gray-500">...</div>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal()"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <div id="imageModal" class="modal-image-viewer" onclick="closeModal()">
+    <span class="close-img-btn" onclick="closeModal()">&times;</span>
+    <img class="modal-image-content" id="img01" referrerpolicy="no-referrer">
+  </div>
+
+  <script>
+    var gStatsMenuData = [];
+    var gStatsCurrentChecklistId = null;
+    var gStatsHistoryData = []; 
+
+    // Cấu hình tần suất
+    var FREQUENCY_MAP = {
+      'CHECKPLANT': 'DAILY', 'CHECKWAREHOUSE': 'DAILY',
+      'CHECKLAB': 'WEEKLY', 'CHECKHR': 'MONTHLY', 'CHECKNBC': 'MONTHLY'
+    };
+
+    // --- KHỞI CHẠY ---
+    google.script.run
+      .withSuccessHandler(renderTabs)
+      .withFailureHandler(function(err) {
+          document.getElementById('loading-tabs').innerHTML = '<span class="text-red-500">Lỗi: ' + err + '</span>';
+      })
+      .getMenuData();
+
+    function renderTabs(json) {
+      var loader = document.getElementById('loading-tabs');
+      if(loader) loader.classList.add('hidden');
+
+      try { gStatsMenuData = JSON.parse(json);
+      } catch (e) { console.error(e); return; }
+      
+      var container = document.getElementById('checklist-tabs');
+      if(!container) return;
+      container.innerHTML = '';
+      
+      var list = gStatsMenuData.filter(function(i) { return i.type === 'LINK' && i.action === 'OPEN_CHECKLIST'; });
+      if (list.length === 0) { container.innerHTML = '<span class="text-xs text-red-400">Không có dữ liệu Menu</span>'; return;
+      }
+
+      list.forEach(function(item, index) {
+        var btn = document.createElement('div');
+        btn.className = 'tab-item';
+        var iconClass = item.icon ? 'ph-' + item.icon : 'ph-clipboard-text';
+        btn.innerHTML = '<i class="ph ' + iconClass + '"></i>' + item.name;
+        btn.onclick = function() { onTabClick(item.id, btn); };
+        container.appendChild(btn);
+        if(index === 0) btn.click();
+      });
+    }
+
+    function onTabClick(id, btnElement) {
+      gStatsCurrentChecklistId = id;
+      document.querySelectorAll('.tab-item').forEach(function(b) { b.classList.remove('active'); });
+      btnElement.classList.add('active');
+      
+      var item = gStatsMenuData.find(function(i) { return i.id === id; });
+      var freq = FREQUENCY_MAP[id] || "MONTHLY"; 
+      
+      if (!FREQUENCY_MAP[id]) {
+          var checkStr = ((item.note||"") + " " + (item.frequency||"")).toUpperCase();
+          if (checkStr.includes("DAILY")) freq = "DAILY";
+          else if (checkStr.includes("WEEKLY")) freq = "WEEKLY";
+      }
+      renderTimeButtons(freq);
+    }
+
+    function renderTimeButtons(freq) {
+      var section = document.getElementById('time-section');
+      var container = document.getElementById('time-btns-container');
+      section.classList.remove('hidden');
+      document.getElementById('custom-picker').classList.add('hidden');
+      document.getElementById('result-list').innerHTML = '';
+
+      var html = '';
+      if (freq === 'DAILY') {
+        html += '<button onclick="loadData(\'TODAY\', this)" class="time-btn">Hôm nay</button>';
+        html += '<button onclick="loadData(\'WEEK\', this)" class="time-btn">Tuần này</button>';
+        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+      } else if (freq === 'WEEKLY') {
+        html += '<button onclick="loadData(\'WEEK\', this)" class="time-btn">Tuần này</button>';
+        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+      } else {
+        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+      }
+      html += '<button onclick="toggleCustom(this)" class="time-btn">📅 Chọn ngày</button>';
+      container.innerHTML = html;
+      
+      var firstBtn = container.querySelector('button');
+      if(firstBtn) firstBtn.click();
+    }
+    
+    function activeTimeBtn(btn) { 
+        document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
+        if(btn) btn.classList.add('active');
+    }
+    function toggleCustom(btn) { activeTimeBtn(btn); document.getElementById('custom-picker').classList.remove('hidden');
+    }
+
+    function loadData(type, btn) {
+      if(type !== 'CUSTOM') { activeTimeBtn(btn); document.getElementById('custom-picker').classList.add('hidden');
+      }
+      var resDiv = document.getElementById('result-list');
+      if (type === 'TODAY') {
+        var day = new Date().getDay();
+        if (day === 0 || day === 6) { 
+          resDiv.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-gray-400 border border-dashed rounded-xl bg-white"><i class="ph-duotone ph-coffee text-5xl mb-3 text-orange-400"></i><p class="font-bold text-gray-600">Ngày nghỉ</p></div>';
+          return;
+        }
+      }
+      resDiv.innerHTML = '<div class="space-y-3"><div class="h-24 bg-white rounded-xl animate-pulse"></div><div class="h-24 bg-white rounded-xl animate-pulse"></div></div>';
+      var s = new Date(), e = new Date();
+      if (type === 'WEEK') {
+         var day = s.getDay();
+         var diff = s.getDate() - day + (day == 0 ? -6 : 1);
+         s.setDate(diff); e.setDate(diff + 6);
+      } else if (type === 'MONTH') {
+         s = new Date(s.getFullYear(), s.getMonth(), 1);
+         e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+      } else if (type === 'CUSTOM') {
+         var sVal = document.getElementById('d-start').value;
+         var eVal = document.getElementById('d-end').value;
+         if(!sVal || !eVal) return;
+         s = new Date(sVal); e = new Date(eVal);
+      }
+      var sStr = s.toISOString().split('T')[0]; var eStr = e.toISOString().split('T')[0];
+      google.script.run
+        .withSuccessHandler(renderResults)
+        .withFailureHandler(function(err) {
+           resDiv.innerHTML = '<div class="text-red-500 text-center p-4">Lỗi tải dữ liệu: ' + err + '</div>';
+        })
+        .getTrackingStats(type === 'CUSTOM' ? (sStr + ',' + eStr) : type);
+    }
+
+    function renderResults(json) {
+      try {
+        var response = JSON.parse(json);
+        var currentData = response[gStatsCurrentChecklistId]; 
+        gStatsHistoryData = currentData ? currentData.rows : [];
+      } catch(e) {
+        gStatsHistoryData = [];
+      }
+      
+      var div = document.getElementById('result-list');
+      if (!gStatsHistoryData || gStatsHistoryData.length === 0) { 
+        div.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-gray-300"><i class="ph-duotone ph-files text-4xl mb-2"></i><p class="text-xs">Chưa có dữ liệu</p></div>';
+        return; 
+      }
+      
+      var html = '';
+      var isDetail = gStatsHistoryData[0].hasOwnProperty('inspector');
+
+      gStatsHistoryData.forEach(function(item, index) {
+        if (isDetail) {
+            // RENDER CHI TIẾT
+            var statusClass = (item.result === 'FAIL') ? 'status-fail' : 'status-pass';
+            var badgeClass = (item.result === 'FAIL') ? 'badge-fail' : 'badge-pass';
+            var iconClass = (item.result === 'FAIL') ? 'ph-warning-circle' : 'ph-check-circle';
+            var errorHtml = (item.errorCount > 0) ? '<span class="error-count">' + item.errorCount + ' lỗi</span>' : '';
+            
+            var subInfo = item.result === 'MISSING' ? 
+                '<div class="text-xs text-orange-500 font-bold"><i class="ph-fill ph-warning"></i> Chưa kiểm tra</div>' :
+                '<div class="inspector-info"><div class="inspector-avatar"><i class="ph-fill ph-user"></i></div><div><div class="inspector-name">' + (item.inspector || 'N/A') + '</div><div class="check-time">' + item.time + '</div></div></div>';
+            var cardStatus = item.result === 'MISSING' ? 'border-l-4 border-orange-300' : (statusClass);
+            
+            html += '<div class="stat-card ' + cardStatus + '" onclick="openModal(' + index + ')">' +
+                    (item.result !== 'MISSING' ? '<div class="border-l-status"></div>' : '') +
+                    '<div class="card-header">' +
+                      '<div><div class="card-location">' + (item.loc || 'N/A') + '</div><div class="card-area"><i class="ph-fill ph-map-pin mr-1"></i> ' + 
+                      (item.area || '...') + '</div></div>' +
+                      (item.result !== 'MISSING' ? '<div class="status-badge ' + badgeClass + '"><i class="ph-fill ' + iconClass + '"></i> ' + item.result + ' ' + errorHtml + '</div>' : '') +
+                    '</div>' +
+                    '<div class="divider"></div>' +
+                    '<div class="card-footer">' + subInfo + (item.result !== 'MISSING' ? '<div class="text-xs text-gray-400"><i class="ph-bold ph-caret-right"></i></div>' : '') + '</div>' +
+                    '</div>';
+        } else {
+            // RENDER TỔNG HỢP
+            var percent = item.ratio;
+            var color = percent >= 100 ? 'bg-emerald-500' : (percent >= 50 ? 'bg-blue-500' : 'bg-orange-500');
+            html += '<div class="stat-card">' +
+                    '<div class="flex justify-between items-end mb-2">' +
+                        '<div><div class="card-location">' + item.loc + '</div><div class="card-area">' + item.area + '</div></div>' +
+                        '<div class="text-2xl font-bold text-slate-700">' + item.current + '<span class="text-xs text-gray-400 font-normal">/' + 
+                        item.target + '</span></div>' +
+                    '</div>' +
+                    '<div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">' +
+                        '<div class="' + color + ' h-2.5 rounded-full" style="width: ' + (percent > 100 ? 100 : percent) + '%"></div>' +
+                        '</div>' +
+                    '<div class="text-right text-[10px] text-gray-500">Đạt ' + percent + '% kế hoạch</div>' +
+                    '</div>';
+        }
+      });
+      div.innerHTML = html;
+    }
+
+    // --- LOGIC MODAL MỚI ---
+    
+    function openModal(index) {
+      var item = gStatsHistoryData[index];
+      if (!item || item.result === 'MISSING') return; 
+      
+      document.getElementById('m-location').innerText = item.loc + " (" + item.area + ")";
+      document.getElementById('m-time').innerText = item.inspector + ' • ' + item.time;
+
+      var body = document.getElementById('m-body');
+      if (!item.issues || item.issues.length === 0) {
+        body.innerHTML = '<div class="no-issue"><i class="ph-fill ph-check-circle text-2xl mb-1"></i><br>Không có lỗi nào</div>';
+      } else {
+        var html = '';
+        item.issues.forEach(function(issue) {
+          var imgsHtml = '';
+          if (issue.images && issue.images.length > 0) {
+            imgsHtml = '<div class="issue-imgs">';
+            issue.images.forEach(function(url) {
+              var fileId = "";
+              // Regex lấy ID (Hỗ trợ cả link /d/ và id=)
+              var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+              if (match && match[1]) { fileId = match[1]; } 
+              else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) fileId = match[1]; }
+
+              if (fileId) {
+                // Link Thumbnail
+                var thumbLink = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w200";
+                
+                // [QUAN TRỌNG] Gắn sự kiện showModal với ID ảnh
+                imgsHtml += '<img src="' + thumbLink + '" class="issue-img" onclick="showModal(\'' + fileId + '\')" onerror="this.onerror=null;this.src=\'https://cdn-icons-png.flaticon.com/512/3342/3342137.png\'">';
+              } else {
+                imgsHtml += '<div class="issue-img flex items-center justify-center bg-gray-100 text-[10px] text-blue-600 cursor-pointer border" onclick="window.open(\'' + url + '\',\'_blank\')">Link</div>';
+              }
+            });
+            imgsHtml += '</div>';
+          }
+          
+          var noteHtml = issue.note ? '<div class="issue-note"><i class="ph-bold ph-note-pencil"></i> ' + issue.note + '</div>' : '';
+          html += '<div class="issue-item"><div class="issue-q">' + issue.question + '</div><div class="text-xs text-red-600 font-bold mb-1"><i class="ph-fill ph-x-circle"></i> Kết quả: ' + issue.value + '</div>' + noteHtml + imgsHtml + '</div>';
+        });
+        body.innerHTML = html;
+      }
+      document.getElementById('detail-modal').classList.add('open');
+    }
+
+    // Hàm hiển thị Modal Ảnh (Sửa lỗi ảnh gãy)
+    function showModal(fileId) {
+      var modal = document.getElementById("imageModal");
+      var modalImg = document.getElementById("img01");
+      
+      // Reset ảnh
+      modalImg.src = "";
+      
+      // Link chuẩn hiển thị (ép trình duyệt render ảnh)
+      var fullUrl = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w5000";
+      
+      modal.style.display = "flex";
+      modalImg.src = fullUrl;
+    }
+
+    function closeModal() {
+        // [ĐÃ SỬA] Kiểm tra nếu Modal Ảnh đang mở (flex) -> Đóng nó trước
+        var imgModal = document.getElementById("imageModal");
+        if (imgModal && imgModal.style.display === "flex") {
+            imgModal.style.display = "none";
+            document.getElementById("img01").src = "";
+            return; // Dừng lại, không đóng Modal chi tiết
+        }
+
+        // 2. Nếu không xem ảnh -> Đóng Modal chi tiết phiếu
+        document.getElementById('detail-modal').classList.remove('open');
+    }
+  </script>
+</body>
+</html>
