@@ -84,10 +84,10 @@
   </div>
 
   <script>
-    let gLegalData = [];
-    let gCurrentTab = 'ALL';
+    // Dùng var để đảm bảo tương thích mọi trình duyệt
+    var gLegalData = [];
+    var gCurrentTab = 'ALL';
 
-    // --- KHỞI TẠO ---
     function init() {
         google.script.run
             .withSuccessHandler(onSuccess)
@@ -97,7 +97,7 @@
     
     function onSuccess(json) {
         try {
-            const data = JSON.parse(json);
+            var data = JSON.parse(json);
             if (data.error) throw new Error(data.message);
             gLegalData = data;
             renderData();
@@ -105,73 +105,86 @@
     }
 
     function onError(msg) {
-        document.getElementById('doc-list').innerHTML = `<div class="text-center text-red-500 mt-10 p-4 border border-dashed border-red-300 rounded bg-red-50"><i class="ph-fill ph-warning-circle text-3xl mb-2"></i><br>${msg}</div>`;
+        document.getElementById('doc-list').innerHTML = '<div class="text-center text-red-500 mt-10 p-4 border border-dashed border-red-300 rounded bg-red-50"><i class="ph-fill ph-warning-circle text-3xl mb-2"></i><br>' + msg + '</div>';
     }
 
-    // --- RENDER DỮ LIỆU ---
     function switchTab(tabName) {
         gCurrentTab = tabName;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        var btns = document.querySelectorAll('.tab-btn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.remove('active');
+        }
         
-        // Xử lý ID đặc biệt cho tab có dấu
-        let tabId = tabName;
+        var tabId = tabName;
         if(tabName === 'An toàn vệ sinh lao động') tabId = 'ATVSLD';
         
-        const activeBtn = document.getElementById('tab-' + tabId) || document.getElementById('tab-' + tabName);
+        var activeBtn = document.getElementById('tab-' + tabId) || document.getElementById('tab-' + tabName);
         if(activeBtn) activeBtn.classList.add('active');
         
         renderData();
     }
 
     function renderData() {
-        const container = document.getElementById('doc-list');
-        const search = removeAccents(document.getElementById('search-input').value.toLowerCase());
+        var container = document.getElementById('doc-list');
+        var searchInput = document.getElementById('search-input');
+        var search = removeAccents(searchInput.value.toLowerCase());
         
-        const filtered = gLegalData.filter(item => {
-            // Lọc theo Tab
-            if (gCurrentTab !== 'ALL' && item.category !== gCurrentTab) return false;
-            // Lọc theo Search
+        // Lọc dữ liệu thủ công thay vì dùng filter mũi tên để tránh lỗi
+        var filtered = [];
+        for (var i = 0; i < gLegalData.length; i++) {
+            var item = gLegalData[i];
+            var matchTab = (gCurrentTab === 'ALL' || item.category === gCurrentTab);
+            var matchSearch = true;
             if (search) {
-                return removeAccents(item.name.toLowerCase()).includes(search);
+                matchSearch = removeAccents(item.name.toLowerCase()).indexOf(search) > -1;
             }
-            return true;
-        });
+            
+            if (matchTab && matchSearch) {
+                filtered.push(item);
+            }
+        }
 
         if (filtered.length === 0) {
-            container.innerHTML = `<div class="flex flex-col items-center justify-center mt-10 text-gray-400 opacity-60"><i class="ph-duotone ph-magnifying-glass text-5xl mb-2"></i><p class="text-sm">Không tìm thấy văn bản nào</p></div>`;
+            container.innerHTML = '<div class="flex flex-col items-center justify-center mt-10 text-gray-400 opacity-60"><i class="ph-duotone ph-magnifying-glass text-5xl mb-2"></i><p class="text-sm">Không tìm thấy văn bản nào</p></div>';
             return;
         }
 
-        let html = '';
-        filtered.forEach(item => {
-            // Chọn icon tùy theo lĩnh vực
-            let iconClass = 'ph-file-text text-gray-500';
-            let bgClass = 'bg-gray-100';
+        var html = '';
+        for (var j = 0; j < filtered.length; j++) {
+            var item = filtered[j];
+            // Tìm index thực trong mảng gốc để làm ID
+            var originalIndex = gLegalData.indexOf(item); 
             
-            if(item.category.includes('PCCC')) { iconClass = 'ph-fire text-red-500'; bgClass = 'bg-red-50'; }
-            else if(item.category.includes('Hóa chất')) { iconClass = 'ph-flask text-purple-500'; bgClass = 'bg-purple-50'; }
-            else if(item.category.includes('Môi trường')) { iconClass = 'ph-plant text-emerald-500'; bgClass = 'bg-emerald-50'; }
-            else if(item.category.includes('An toàn')) { iconClass = 'ph-hard-hat text-orange-500'; bgClass = 'bg-orange-50'; }
+            var iconClass = 'ph-file-text text-gray-500';
+            var bgClass = 'bg-gray-100';
+            
+            if(item.category.indexOf('PCCC') > -1) { iconClass = 'ph-fire text-red-500'; bgClass = 'bg-red-50'; }
+            else if(item.category.indexOf('Hóa chất') > -1) { iconClass = 'ph-flask text-purple-500'; bgClass = 'bg-purple-50'; }
+            else if(item.category.indexOf('Môi trường') > -1) { iconClass = 'ph-plant text-emerald-500'; bgClass = 'bg-emerald-50'; }
+            else if(item.category.indexOf('An toàn') > -1) { iconClass = 'ph-hard-hat text-orange-500'; bgClass = 'bg-orange-50'; }
 
-            html += `
-            <div class="doc-card bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-start gap-3 cursor-pointer" onclick='openModal(${JSON.stringify(item)})'>
-                <div class="flex-none w-10 h-10 ${bgClass} rounded-full flex items-center justify-center mt-1">
-                    <i class="ph-fill ${iconClass} text-xl"></i>
-                </div>
-                <div class="flex-1">
-                    <div class="flex justify-between items-start">
-                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">${item.category}</span>
-                        <span class="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">${item.date}</span>
-                    </div>
-                    <h4 class="font-semibold text-sm text-slate-800 leading-snug mt-0.5 line-clamp-2">${item.name}</h4>
-                </div>
-            </div>`;
-        });
+            // LƯU Ý: Thay vì truyền JSON vào HTML (dễ gây lỗi), ta chỉ truyền index
+            html += '<div class="doc-card bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-start gap-3 cursor-pointer" onclick="openModalByIndex(' + originalIndex + ')">' +
+                    '<div class="flex-none w-10 h-10 ' + bgClass + ' rounded-full flex items-center justify-center mt-1">' +
+                    '<i class="ph-fill ' + iconClass + ' text-xl"></i>' +
+                    '</div>' +
+                    '<div class="flex-1">' +
+                    '<div class="flex justify-between items-start">' +
+                    '<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">' + item.category + '</span>' +
+                    '<span class="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">' + item.date + '</span>' +
+                    '</div>' +
+                    '<h4 class="font-semibold text-sm text-slate-800 leading-snug mt-0.5 line-clamp-2">' + item.name + '</h4>' +
+                    '</div>' +
+                    '</div>';
+        }
         container.innerHTML = html;
     }
 
-    // --- MODAL ---
-    function openModal(item) {
+    // Hàm mở modal mới dùng index - AN TOÀN TUYỆT ĐỐI
+    function openModalByIndex(index) {
+        var item = gLegalData[index];
+        if (!item) return;
+
         document.getElementById('m-category').innerText = item.category;
         document.getElementById('m-name').innerText = item.name;
         document.getElementById('m-date').innerText = item.date || "N/A";
@@ -179,15 +192,15 @@
         setupBtn('btn-pdf', item.linkPdf);
         setupBtn('btn-word', item.linkWord);
 
-        const modal = document.getElementById('modal');
-        const panel = document.getElementById('modal-panel');
+        var modal = document.getElementById('modal');
+        var panel = document.getElementById('modal-panel');
         modal.classList.remove('hidden');
-        setTimeout(() => panel.classList.remove('translate-y-full'), 10);
+        setTimeout(function() { panel.classList.remove('translate-y-full'); }, 10);
     }
 
     function setupBtn(id, link) {
-        const btn = document.getElementById(id);
-        if (link && link.startsWith('http')) {
+        var btn = document.getElementById(id);
+        if (link && link.indexOf('http') === 0) {
             btn.href = link;
             btn.classList.remove('hidden');
         } else {
@@ -196,10 +209,10 @@
     }
 
     function closeModal() {
-        const modal = document.getElementById('modal');
-        const panel = document.getElementById('modal-panel');
+        var modal = document.getElementById('modal');
+        var panel = document.getElementById('modal-panel');
         panel.classList.add('translate-y-full');
-        setTimeout(() => modal.classList.add('hidden'), 200);
+        setTimeout(function() { modal.classList.add('hidden'); }, 200);
     }
 
     function closeModule() {
@@ -211,7 +224,8 @@
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
     }
 
-    init(); // Gọi hàm luôn, không cần chờ window.onload
+    // GỌI HÀM INIT
+    init(); 
   </script>
 </body>
 </html>
