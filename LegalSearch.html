@@ -211,7 +211,7 @@
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
     }
 
-    window.onload = init;
+    init(); // Gọi hàm luôn, không cần chờ window.onload
   </script>
 </body>
 </html>
