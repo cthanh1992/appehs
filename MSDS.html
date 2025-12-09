@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    /* CSS tùy chỉnh */
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Ẩn thanh cuộn nhưng vẫn cuộn được */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Style cho nút lọc Hazard */
+    .filter-chip.active { background-color: #dbeafe; border-color: #3b82f6; color: #1d4ed8; font-weight: bold; }
+    
+    /* Style cho Tab */
+    .tab-btn { border-bottom: 3px solid transparent; color: #6b7280; }
+    .tab-btn.active { border-color: #10b981; color: #059669; font-weight: bold; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-2 font-sans flex flex-col h-screen overflow-hidden">
+
+  <?!= include('GhsIcons'); ?>
+
+  <div class="flex-none bg-gray-100 pb-2 z-20 space-y-2">
+    <div class="bg-slate-800 text-white p-4 rounded-xl shadow-lg flex justify-between items-center">
+        <h2 class="font-bold flex items-center gap-2 text-lg">
+            <i class="ph ph-flask text-2xl text-emerald-400"></i> Tra Cứu Hóa Chất
+        </h2>
+        <button onclick="closeModule()" class="text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition">
+            <i class="ph ph-x text-2xl"></i>
+        </button>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-sm flex text-sm font-medium border border-gray-200">
+        <button onclick="switchTab('ALL')" id="tab-ALL" class="tab-btn active flex-1 py-3 text-center transition">Tất cả</button>
+        <button onclick="switchTab('NLT')" id="tab-NLT" class="tab-btn flex-1 py-3 text-center transition">Nguyên liệu</button>
+        <button onclick="switchTab('BTP')" id="tab-BTP" class="tab-btn flex-1 py-3 text-center transition">Bán thành phẩm</button>
+    </div>
+
+    <div class="relative shadow-sm">
+        <i class="ph ph-magnifying-glass absolute left-3 top-3.5 text-gray-400 text-xl"></i>
+        <input type="text" id="search-input" onkeyup="handleSearch()" 
+               class="w-full pl-10 pr-10 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white transition" 
+               placeholder="Nhập tên, mã số hoặc CAS...">
+        <button onclick="clearSearch()" id="btn-clear" class="hidden absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+            <i class="ph-fill ph-x-circle text-xl"></i>
+        </button>
+    </div>
+
+    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="hazard-filters">
+        </div>
+  </div>
+
+  <div id="msds-list" class="flex-1 overflow-y-auto space-y-3 pb-24 pr-1">
+      <div class="flex flex-col items-center justify-center mt-20 text-gray-400">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-3"></div>
+          <span class="text-sm">Đang tải dữ liệu...</span>
+      </div>
+  </div>
+
+  <div id="detail-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-opacity duration-300">
+      <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl transform transition-transform duration-300 translate-y-full sm:translate-y-0 flex flex-col max-h-[90vh]" id="modal-content">
+          <div class="flex justify-between items-start border-b p-4 bg-gray-50 rounded-t-2xl">
+              <div class="pr-2">
+                  <h3 class="text-lg font-bold text-slate-800 leading-tight" id="m-name">...</h3>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                      <span class="text-[10px] font-mono bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-300">MÃ: <b id="m-code">...</b></span>
+                      <span class="text-[10px] font-mono bg-orange-100 text-orange-700 px-2 py-1 rounded border border-orange-200">CAS: <b id="m-cas">...</b></span>
+                      <span id="m-category-badge" class="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 hidden">...</span>
+                  </div>
+              </div>
+              <button onclick="closeModal()" class="bg-white p-2 rounded-full hover:bg-gray-200 border border-gray-200 shadow-sm transition"><i class="ph ph-x text-lg"></i></button>
+          </div>
+          <div class="p-5 overflow-y-auto no-scrollbar space-y-5">
+              
+              <div>
+                  <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Cảnh báo nguy hiểm</label>
+                  <div id="m-ghs" class="flex gap-3 flex-wrap bg-red-50 p-3 rounded-xl border border-red-100 min-h-[60px]"></div>
+              </div>
+
+              <div id="box-hphrase" class="hidden">
+                  <label class="text-xs font-bold text-orange-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                      <i class="ph-fill ph-warning-octagon"></i> Cảnh báo H-Phrase
+                  </label>
+                  <div class="bg-orange-50 p-3 rounded-lg border border-orange-200 text-sm text-orange-800 font-medium leading-relaxed" id="m-hphrase">
+                      ...
+                  </div>
+              </div>
+
+              <div>
+                  <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-1"><i class="ph-fill ph-flask"></i> Thành phần</label>
+                  <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-700 leading-relaxed" id="m-comp">...</div>
+              </div>
+              
+              <div>
+                  <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block flex items-center gap-1"><i class="ph-fill ph-drop"></i> Tính chất</label>
+                  <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-700 leading-relaxed" id="m-prop">...</div>
+              </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 p-4 border-t bg-gray-50 rounded-b-2xl">
+              <a id="btn-short" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-white text-emerald-600 border border-emerald-200 py-3 rounded-xl font-bold hover:bg-emerald-50 transition shadow-sm"><i class="ph ph-file-text text-xl"></i> Rút gọn</a>
+              <a id="btn-full" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-md"><i class="ph ph-file-pdf text-xl"></i> Chi tiết</a>
+          </div>
+      </div>
+  </div>
+
+  <script>
+    let allMsdsData = [];
+    let currentTab = 'ALL';
+    let activeHazards = [];
+
+    // --- CẤU HÌNH BỘ LỌC ---
+    const HAZARD_FILTERS = [
+        { key: 'toxic', label: 'Độc', icon: 'skull' },
+        { key: 'flammable', label: 'Dễ cháy', icon: 'fire' },
+        { key: 'oxidizing', label: 'Oxy hóa', icon: 'fire-simple' },
+        { key: 'corrosive', label: 'Ăn mòn', icon: 'drop' },
+        { key: 'irritant', label: 'Kích ứng', icon: 'warning-circle' },
+        { key: 'health', label: 'Sức khỏe', icon: 'heart-break' },
+        { key: 'env', label: 'Sinh thái', icon: 'plant' }
+    ];
+if (typeof window.goBack === 'function') {
+        window.oldGoBack = window.goBack; // Lưu hàm cũ nếu cần
+        window.goBack = function() {
+            closeModule(); // Bấm Back thì gọi hàm đóng module
+        };
+    }
+    // --- KHỞI CHẠY ---
+    // 1. Gọi server lấy dữ liệu
+    initMsdsModule();
+    // 2. Vẽ nút bộ lọc
+    renderHazardFilters();
+
+    function initMsdsModule() {
+        // Hiện lại nút Back trên header chính (nếu nó bị ẩn)
+        const btnBack = document.getElementById('btn-back');
+        if(btnBack) btnBack.classList.remove('hidden');
+
+        google.script.run
+            .withSuccessHandler(onDataLoaded)
+            .withFailureHandler(onDataError)
+            .getMsdsList();
+    }
+
+    function onDataLoaded(dataJson) {
+        try {
+            const parsed = JSON.parse(dataJson);
+            if (parsed.error) { onDataError(parsed.message); return; }
+            allMsdsData = parsed;
+            applyFilters(); // Render lần đầu
+        } catch (e) { onDataError("Lỗi dữ liệu: " + e.message); }
+    }
+
+    function onDataError(msg) {
+        document.getElementById('msds-list').innerHTML = `
+            <div class="p-4 text-center text-red-600 bg-red-50 rounded border border-red-200 m-4">
+                <i class="ph-bold ph-warning-circle text-2xl"></i><br>
+                ${msg}<br>
+                <button onclick="initMsdsModule()" class="mt-2 font-bold underline hover:text-red-800">Thử lại</button>
+            </div>`;
+    }
+
+    // --- UI LOGIC: VẼ GIAO DIỆN ---
+    
+    function renderHazardFilters() {
+        const container = document.getElementById('hazard-filters');
+        let html = '';
+        HAZARD_FILTERS.forEach(h => {
+            html += `<button onclick="toggleHazardFilter('${h.key}')" id="filter-${h.key}" 
+                     class="filter-chip whitespace-nowrap px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-600 text-xs font-medium flex items-center gap-1 transition select-none flex-shrink-0">
+                     <i class="ph-fill ph-${h.icon}"></i> ${h.label}
+                     </button>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        // Update giao diện Tab
+        ['ALL', 'NLT', 'BTP'].forEach(t => {
+            const btn = document.getElementById(`tab-${t}`);
+            if(t === tab) btn.classList.add('active'); else btn.classList.remove('active');
+        });
+        applyFilters();
+    }
+
+    function toggleHazardFilter(key) {
+        const btn = document.getElementById(`filter-${key}`);
+        if (activeHazards.includes(key)) {
+            activeHazards = activeHazards.filter(k => k !== key); // Bỏ chọn
+            btn.classList.remove('active');
+        } else {
+            activeHazards.push(key); // Chọn thêm
+            btn.classList.add('active');
+        }
+        applyFilters();
+    }
+
+    function handleSearch() {
+        const val = document.getElementById('search-input').value;
+        document.getElementById('btn-clear').classList.toggle('hidden', !val);
+        applyFilters();
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = '';
+        handleSearch();
+        document.getElementById('search-input').focus();
+    }
+
+    // --- CORE: LOGIC LỌC DỮ LIỆU ---
+    function applyFilters() {
+        const searchInput = removeAccents(document.getElementById('search-input').value.toLowerCase());
+        const container = document.getElementById('msds-list');
+        container.innerHTML = '';
+
+        const filtered = allMsdsData.filter(item => {
+            const itemCat = (item.category || "").toUpperCase();
+
+            // 1. Lọc theo Tab (Dựa vào cột AC: NGUYÊN LIỆU / BÁN THÀNH PHẨM)
+            if (currentTab === 'NLT' && !itemCat.includes('NGUYÊN LIỆU')) return false;
+            if (currentTab === 'BTP' && !itemCat.includes('BÁN THÀNH PHẨM') && !itemCat.includes('BTP')) return false;
+
+            // 2. Lọc theo Hazard (Phải thỏa mãn TẤT CẢ các nút đang chọn)
+            if (activeHazards.length > 0) {
+                const hasAllHazards = activeHazards.every(hKey => item.hazards && item.hazards[hKey]);
+                if (!hasAllHazards) return false;
+            }
+
+            // 3. Lọc theo Từ khóa Search
+            if (searchInput) {
+                const matchName = removeAccents((item.name || "").toLowerCase()).includes(searchInput);
+                const matchCode = (item.code || "").toLowerCase().includes(searchInput);
+                const matchCas = (item.cas || "").toLowerCase().includes(searchInput);
+                if (!matchName && !matchCode && !matchCas) return false;
+            }
+
+            return true;
+        });
+
+        // Nếu không có kết quả
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center text-gray-400 mt-20 flex flex-col items-center"><i class="ph ph-magnifying-glass text-4xl mb-2 opacity-20"></i><span>Không tìm thấy kết quả</span></div>`;
+            return;
+        }
+
+        // Render danh sách
+        filtered.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:border-emerald-500 hover:shadow-md transition duration-200 flex justify-between items-center group';
+            el.onclick = () => openDetail(item);
+            
+            // Vẽ icon nhỏ
+            const ghsHtml = generateGhsHtml(item.hazards, true);
+
+            // Badge loại nhỏ (Hiển thị phân loại cạnh tên)
+            let catBadge = '';
+            if ((item.category || "").includes('NGUYÊN LIỆU')) catBadge = '<span class="text-[9px] bg-blue-100 text-blue-600 px-1 rounded ml-1 font-bold">NLT</span>';
+            else if ((item.category || "").includes('BÁN THÀNH PHẨM')) catBadge = '<span class="text-[9px] bg-purple-100 text-purple-600 px-1 rounded ml-1 font-bold">BTP</span>';
+
+            el.innerHTML = `
+                <div class="flex-1 min-w-0 pr-3">
+                    <h4 class="font-bold text-slate-800 text-sm md:text-base truncate group-hover:text-emerald-700 transition">
+                        ${item.name || 'Không tên'} ${catBadge}
+                    </h4>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">${item.code}</span>
+                        <span class="text-[10px] text-gray-400 truncate">CAS: ${item.cas}</span>
+                    </div>
+                </div>
+                <div class="flex -space-x-2 shrink-0 pl-2">${ghsHtml}</div>
+                <div class="ml-2 text-gray-300 group-hover:text-emerald-500 transition"><i class="ph-bold ph-caret-right"></i></div>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    // --- HÀM TIỆN ÍCH ---
+    
+    // Bỏ dấu tiếng Việt
+    function removeAccents(str) { 
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D'); 
+    }
+    
+    // Tạo HTML hình ảnh từ GHS_ICONS_DATA (biến này nằm ở file GhsIcons.html)
+    function generateGhsHtml(hazards, isSmall) {
+        if (!hazards) return "";
+        // Kiểm tra xem GHS_ICONS_DATA có tồn tại không (do file include mang vào)
+        if (typeof GHS_ICONS_DATA === 'undefined') return '<span class="text-xs text-red-500">Lỗi: Thiếu file icon</span>';
+
+        const keys = ['toxic', 'oxidizing', 'flammable', 'corrosive', 'irritant', 'health', 'env'];
+        let html = '';
+        const sizeClass = isSmall ? 'w-8 h-8 bg-white border border-gray-100 rounded-full shadow-sm object-contain p-0.5' : 'w-14 h-14 object-contain drop-shadow-sm hover:scale-110 transition';
+        
+        keys.forEach(key => {
+            if (hazards[key] && GHS_ICONS_DATA[key]) {
+                html += `<img src="${GHS_ICONS_DATA[key]}" class="${sizeClass}" title="${key}" onerror="this.style.display='none'">`;
+            }
+        });
+        
+        if (html === '' && !isSmall) return '<span class="text-sm text-gray-400 italic">An toàn (Không có cảnh báo)</span>';
+        return html;
+    }
+
+    // --- LOGIC POPUP CHI TIẾT ---
+    function openDetail(item) {
+        document.getElementById('m-name').innerText = item.name || "---";
+        document.getElementById('m-code').innerText = item.code || "---";
+        document.getElementById('m-cas').innerText = item.cas || "---";
+        document.getElementById('m-comp').innerText = item.composition || "Chưa cập nhật";
+        document.getElementById('m-prop').innerText = item.properties || "Chưa cập nhật";
+        
+        // --- [MỚI] Xử lý hiển thị H-Phrase ---
+        const hBox = document.getElementById('box-hphrase');
+        const hText = document.getElementById('m-hphrase');
+        
+        if (item.hPhrase && item.hPhrase.trim() !== "") {
+            hText.innerText = item.hPhrase;
+            hBox.classList.remove('hidden'); // Có dữ liệu thì hiện
+        } else {
+            hBox.classList.add('hidden');    // Không có thì ẩn đi cho gọn
+        }
+        // -------------------------------------
+
+        const catBadge = document.getElementById('m-category-badge');
+        if (item.category) {
+            catBadge.innerText = item.category;
+            catBadge.classList.remove('hidden');
+        } else {
+            catBadge.classList.add('hidden');
+        }
+
+        document.getElementById('m-ghs').innerHTML = generateGhsHtml(item.hazards, false);
+        setupLinkBtn('btn-short', item.linkShort);
+        setupLinkBtn('btn-full', item.linkFull);
+
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => content.classList.remove('translate-y-full'), 10);
+    }
+
+    function setupLinkBtn(id, link) {
+        const btn = document.getElementById(id);
+        if (link && String(link).startsWith('http')) {
+            btn.href = link;
+            btn.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+        } else {
+            btn.href = '#';
+            btn.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+        }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('modal-content');
+        content.classList.add('translate-y-full');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    function initMsdsModule() {
+        // Hiện lại nút Back trên header chính (nếu nó bị ẩn)
+        const btnBack = document.getElementById('btn-back');
+        if(btnBack) btnBack.classList.remove('hidden');
+
+        google.script.run
+            .withSuccessHandler(onDataLoaded)
+            .withFailureHandler(onDataError)
+            .getMsdsList();
+    }
+    function closeModule() {
+        // Ẩn modal trước nếu đang mở
+        const modal = document.getElementById('detail-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeModal();
+            return; // Chỉ đóng modal, không đóng app
+        }
+
+        // Gọi hàm loadDataFromSheet của trang chủ để reset giao diện
+        if (typeof loadDataFromSheet === 'function') { 
+            // Trả lại hàm goBack cũ (để tránh lỗi khi về Home)
+            if(window.oldGoBack) window.goBack = window.oldGoBack;
+            loadDataFromSheet(); 
+        } else { 
+            window.top.location.reload(); 
+        }
+    }
+  </script>
+</body>
+</html>
