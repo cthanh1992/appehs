@@ -1,6 +1,6 @@
 // FILE: LegalBackend.gs
 // Thay ID Sheet chứa dữ liệu luật của bạn vào đây
-const LEGAL_SHEET_ID = "DIEN_ID_SHEET_CUA_BAN_VAO_DAY"; 
+const LEGAL_SHEET_ID = "1kNOZMlKPIsOYXiqhqVCAJBLiBirkqxCUf0dyCFTL4JA"; 
 
 function getLegalData() {
   try {
