@@ -1,0 +1,191 @@
+<!-- FILE 5: Checklist.html (Giữ nguyên logic mô tả & cascading chuẩn) -->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    .btn-choice { transition: all 0.2s; border: 1px solid #e5e7eb; }
+    .btn-yes.selected { background-color: #10b981; color: white; border-color: #10b981; }
+    .btn-no.selected { background-color: #ef4444; color: white; border-color: #ef4444; }
+    .btn-multi { transition: all 0.2s; }
+    .btn-multi.selected { background-color: #059669; color: white; border-color: #059669; font-weight: bold; }
+  </style>
+</head>
+<body class="bg-gray-100 p-2 min-h-screen">
+
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col" style="min-height: 90vh;">
+    <div class="bg-slate-800 p-4 text-white flex justify-between items-center sticky top-0 z-50">
+      <div>
+        <h2 class="text-lg font-bold flex items-center gap-2"><i class="ph ph-clipboard-text"></i> Phiếu Kiểm Tra</h2>
+        <p class="text-xs text-slate-300" id="header-checklist-id">Đang tải...</p>
+      </div>
+      <button onclick="closeModule()" class="text-gray-400 hover:text-white p-2"><i class="ph ph-x text-2xl"></i></button>
+    </div>
+
+    <div id="form-container" class="flex-1 p-4 space-y-6 pb-20">
+       <div class="flex flex-col items-center justify-center mt-10 text-gray-400">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-2"></div>
+          Đang tải dữ liệu...
+       </div>
+    </div>
+
+    <div class="p-4 border-t bg-gray-50 fixed bottom-0 left-0 right-0 md:relative z-40">
+      <button onclick="submitForm()" id="btn-submit" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-700 flex justify-center items-center gap-2">
+        <i class="ph ph-paper-plane-right text-xl"></i> Gửi Báo Cáo
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let currentChecklistId = ""; let questionList = []; let userAnswers = {}; 
+
+    function autoSelectArea(checklistId) {
+      currentChecklistId = checklistId;
+      document.getElementById('header-checklist-id').innerText = `Mã phiếu: ${checklistId}`;
+      google.script.run.withSuccessHandler(renderQuestions).getQuestionsByChecklistID(checklistId);
+    }
+
+    // --- UI HELPERS ---
+    function createInfoButton(qId, text) {
+        if (!text) return "";
+        return `<button type="button" onclick="toggleDescription('${qId}')" class="ml-1 text-emerald-500 hover:text-emerald-700 focus:outline-none transition inline-flex items-center align-middle"><i class="ph-fill ph-info text-xl"></i></button>`;
+    }
+    function createDescriptionBox(qId, text) {
+        if (!text) return "";
+        const formattedText = String(text).replace(/\n/g, '<br>');
+        return `<div id="desc-${qId}" class="hidden mt-2 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-100 italic leading-relaxed">${formattedText}</div>`;
+    }
+    function toggleDescription(qId) {
+        const box = document.getElementById(`desc-${qId}`);
+        if (box) { box.classList.toggle('hidden'); if(!box.classList.contains('hidden')) box.classList.add('fade-in'); }
+    }
+
+    // --- RENDER ---
+    function renderQuestions(questions) {
+      const container = document.getElementById('form-container'); container.innerHTML = ''; questionList = questions; 
+      if (!questions || questions.length === 0) { container.innerHTML = `<div class="text-center text-orange-500 mt-10 p-4 bg-orange-50">Chưa có dữ liệu cho mã: <b>${currentChecklistId}</b></div>`; return; }
+
+      questions.forEach((q, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = "border-b border-gray-100 pb-6 last:border-0 transition-all duration-300";
+        wrapper.id = `wrapper-${q.qId}`;
+        if (q.conditionValue) wrapper.classList.add('hidden');
+
+        const labelHtml = `<div class="block text-sm font-bold text-gray-700 mb-2">${q.content} ${q.required ? '<span class="text-red-500">*</span>' : ''} ${createInfoButton(q.qId, q.description)}</div>${createDescriptionBox(q.qId, q.description)}`;
+        let innerHTML = '';
+
+        if (q.type === 'TEXT') {
+            innerHTML = `${labelHtml}<input type="text" id="input-${q.qId}" onchange="handleInputChange('${q.qId}')" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Nhập nội dung...">`;
+        } else if (q.type === 'CHOICE') {
+            let buttonsHtml = (q.parentId && !q.conditionValue) ? `<div class="col-span-2 text-sm text-gray-400 italic py-2 bg-gray-50 rounded text-center border border-dashed border-gray-300">(Vui lòng chọn câu ${q.parentId} trước)</div>` : '';
+            if (!q.parentId || q.conditionValue) { q.options.split(',').forEach(opt => buttonsHtml += createButtonHtml(q.qId, opt.trim())); }
+            innerHTML = `${labelHtml}<div id="choice-container-${q.qId}" class="grid grid-cols-2 md:grid-cols-3 gap-3">${buttonsHtml}</div><input type="hidden" id="input-${q.qId}" value="">`;
+        } else if (q.type === 'SELECT') {
+            let optionsHtml = (q.parentId && !q.conditionValue) ? `<option value="">(Chọn câu ${q.parentId} trước)</option>` : `<option value="">-- Chọn --</option>`;
+            let isDisabled = (q.parentId && !q.conditionValue);
+            if (!isDisabled) { q.options.split(',').forEach(opt => optionsHtml += `<option value="${opt.trim()}">${opt.trim()}</option>`); }
+            innerHTML = `${labelHtml}<div class="relative"><select id="input-${q.qId}" onchange="handleInputChange('${q.qId}')" ${isDisabled ? 'disabled' : ''} class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-400 transition">${optionsHtml}</select><div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"><i class="ph ph-caret-down"></i></div></div>`;
+        } else if (q.type === 'YESNO') {
+             innerHTML = `<div class="mb-3"><div class="text-sm font-bold text-gray-800 flex items-center flex-wrap"><span class="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded mr-2">#${index+1}</span>${q.content} ${createInfoButton(q.qId, q.description)}</div>${createDescriptionBox(q.qId, q.description)}</div>
+                <div class="flex gap-3 mb-3"><button onclick="handleChoice('${q.qId}', 'YES')" id="btn-yes-${q.qId}" class="btn-choice btn-yes flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2"><i class="ph ph-check-circle text-xl"></i> Đạt</button><button onclick="handleChoice('${q.qId}', 'NO')" id="btn-no-${q.qId}" class="btn-choice btn-no flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2"><i class="ph ph-warning-circle text-xl"></i> Không đạt</button></div>
+                <div id="fail-zone-${q.qId}" class="hidden bg-red-50 p-4 rounded-xl border border-red-100 fade-in space-y-3"><input type="text" id="note-${q.qId}" class="w-full text-sm p-2 border border-red-200 rounded" placeholder="Chi tiết lỗi..."><label class="flex items-center gap-2 text-xs font-bold text-red-500 uppercase cursor-pointer w-fit p-2 hover:bg-red-100 rounded"><i class="ph ph-camera text-lg"></i> Hình ảnh <input type="file" multiple accept="image/*" class="hidden" onchange="handleImageUpload('${q.qId}', this)"></label><div id="preview-${q.qId}" class="flex gap-2 flex-wrap mt-2"></div></div>`;
+        }
+        wrapper.innerHTML = innerHTML; container.appendChild(wrapper); userAnswers[q.qId] = { type: q.type, value: null, note: '', images: [] };
+      });
+    }
+
+    function createButtonHtml(qId, val) { return `<button onclick="handleButtonChoice('${qId}', '${val}')" id="btn-${qId}-${val.replace(/\s/g, '')}" class="btn-multi group-${qId} py-3 px-4 rounded-lg border border-gray-200 bg-white text-gray-600 font-medium hover:bg-emerald-50 transition shadow-sm w-full break-words text-sm">${val}</button>`; }
+    function handleButtonChoice(qId, val) { userAnswers[qId].value = val; const hiddenInput = document.getElementById(`input-${qId}`); if(hiddenInput) hiddenInput.value = val; const buttons = document.querySelectorAll(`.group-${qId}`); buttons.forEach(btn => btn.classList.remove('selected')); const selectedBtn = document.getElementById(`btn-${qId}-${val.replace(/\s/g, '')}`); if(selectedBtn) selectedBtn.classList.add('selected'); handleInputChange(qId); }
+    function handleInputChange(qId) { const el = document.getElementById(`input-${qId}`); const val = el ? el.value : userAnswers[qId].value; userAnswers[qId].value = val; const childQuestions = questionList.filter(q => q.parentId === qId); childQuestions.forEach(child => updateChildOptions(child, val)); }
+    
+    function updateChildOptions(childQ, parentValue) {
+        const wrapper = document.getElementById(`wrapper-${childQ.qId}`); const childInput = document.getElementById(`input-${childQ.qId}`);
+        // 1. Logic Ẩn/Hiện (Conditional)
+        if (childQ.conditionValue) {
+            const allowedValues = String(childQ.conditionValue).split(',').map(v => v.trim()); const currentParentVal = String(parentValue).trim();
+            if (allowedValues.includes(currentParentVal)) { wrapper.classList.remove('hidden'); wrapper.classList.add('fade-in'); }
+            else { wrapper.classList.add('hidden'); if(childInput) childInput.value = ""; userAnswers[childQ.qId].value = null; handleInputChange(childQ.qId); }
+            return;
+        }
+        // 2. Logic Cascading (Phụ thuộc)
+        if (childQ.type === 'CHOICE') {
+            const container = document.getElementById(`choice-container-${childQ.qId}`);
+            if (!parentValue) { container.innerHTML = `<div class="col-span-2 text-sm text-gray-400 italic py-2 bg-gray-50 rounded text-center border border-dashed border-gray-300">(Vui lòng chọn câu ${childQ.parentId} trước)</div>`; childInput.value = ""; userAnswers[childQ.qId].value = null; handleInputChange(childQ.qId); return; }
+            const mapOptions = {}; String(childQ.options).split('||').forEach(group => { const parts = group.split(':'); if (parts.length === 2) mapOptions[parts[0].trim()] = parts[1].split(',').map(v => v.trim()); });
+            const validOptions = mapOptions[parentValue.trim()] || [];
+            if (validOptions.length > 0) { let html = ''; validOptions.forEach(opt => html += createButtonHtml(childQ.qId, opt)); container.innerHTML = html; } else { container.innerHTML = `<div class="col-span-2 text-sm text-orange-500 italic py-2">(Không có lựa chọn)</div>`; }
+            childInput.value = ""; userAnswers[childQ.qId].value = null; handleInputChange(childQ.qId);
+        }
+        else if (childQ.type === 'SELECT') {
+            if (!parentValue) { childInput.innerHTML = `<option value="">(Chọn câu ${childQ.parentId} trước)</option>`; childInput.value = ""; childInput.disabled = true; userAnswers[childQ.qId].value = null; handleInputChange(childQ.qId); return; }
+            const mapOptions = {}; String(childQ.options).split('||').forEach(group => { const parts = group.split(':'); if (parts.length === 2) mapOptions[parts[0].trim()] = parts[1].split(',').map(v => v.trim()); });
+            const validOptions = mapOptions[parentValue.trim()] || [];
+            if (validOptions.length > 0) { let html = `<option value="">-- Chọn --</option>`; validOptions.forEach(opt => html += `<option value="${opt}">${opt}</option>`); childInput.innerHTML = html; childInput.disabled = false; } else { childInput.innerHTML = `<option value="">(Không có lựa chọn)</option>`; childInput.disabled = true; }
+            childInput.value = ""; userAnswers[childQ.qId].value = null; handleInputChange(childQ.qId);
+        }
+    }
+
+    function handleChoice(qId, value) { const btnYes = document.getElementById(`btn-yes-${qId}`); const btnNo = document.getElementById(`btn-no-${qId}`); const failZone = document.getElementById(`fail-zone-${qId}`); if (value === 'YES') { btnYes.classList.add('selected'); btnNo.classList.remove('selected'); failZone.classList.add('hidden'); } else { btnNo.classList.add('selected'); btnYes.classList.remove('selected'); failZone.classList.remove('hidden'); } userAnswers[qId].value = value; }
+    function handleImageUpload(qId, inputElement) { const files = Array.from(inputElement.files); const previewZone = document.getElementById(`preview-${qId}`); files.forEach(file => { const reader = new FileReader(); reader.onload = function(e) { userAnswers[qId].images.push(e.target.result); const img = document.createElement('img'); img.src = e.target.result; img.className = "w-16 h-16 object-cover rounded-lg border border-red-200 shadow-sm"; previewZone.appendChild(img); }; reader.readAsDataURL(file); }); }
+    function submitForm() {
+        const finalData = [];
+        for (const q of questionList) {
+            const ans = userAnswers[q.qId];
+            const wrapper = document.getElementById(`wrapper-${q.qId}`);
+            if (wrapper.classList.contains('hidden')) continue;
+            
+            // Validate
+            if (q.type === 'TEXT' || q.type === 'SELECT' || q.type === 'CHOICE') { 
+                if (q.required && !ans.value) { 
+                    alert(`Vui lòng nhập/chọn: ${q.content}`); 
+                    if(q.type === 'TEXT' || q.type === 'SELECT') document.getElementById(`input-${q.qId}`).focus(); 
+                    return; 
+                } 
+            }
+            if (q.type === 'YESNO') { 
+                if (!ans.value) return alert(`Chưa đánh giá: ${q.content}`); 
+                if (ans.value === 'NO') { 
+                    ans.note = document.getElementById(`note-${q.qId}`).value.trim(); 
+                    if (!ans.note) return alert(`Nhập lỗi cho câu: ${q.content}`); 
+                } 
+            }
+            finalData.push({ qId: q.qId, question: q.content, type: q.type, value: ans.value, note: ans.note, images: ans.images });
+        }
+
+        // --- PHẦN THAY ĐỔI: GỬI NGẦM ---
+        
+        // 1. Vô hiệu hóa nút để tránh bấm kép
+        const btn = document.getElementById('btn-submit'); 
+        btn.disabled = true; 
+        btn.innerText = "Đang xử lý...";
+
+        // 2. Hiện thông báo ở App chính (gọi hàm showToast của Index.html)
+        if (typeof showToast === 'function') {
+            showToast("⏳ Đang gửi dữ liệu ngầm... Bạn có thể làm việc khác.", 'loading');
+        }
+
+        // 3. Gọi server chạy ngầm
+        google.script.run
+            .withSuccessHandler(res => {
+                // Khi server chạy xong (dù lúc này form đã đóng), nó vẫn gọi được hàm này
+                if (typeof showToast === 'function') {
+                    if (res.success) showToast("✅ Đã gửi báo cáo thành công!", 'success');
+                    else showToast("❌ Lỗi gửi: " + res.message, 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                if (typeof showToast === 'function') showToast("❌ Lỗi kết nối: " + err, 'error');
+            })
+            .saveDynamicReport({ checklistId: currentChecklistId, answers: finalData });
+
+        // 4. ĐÓNG FORM NGAY LẬP TỨC (Không chờ server)
+        closeModule();
+    }
+    function closeModule() { if (typeof loadDataFromSheet === 'function') { loadDataFromSheet(); } else { window.top.location.reload(); } }
+  </script>
+</body>
+</html>
