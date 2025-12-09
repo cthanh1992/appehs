@@ -1,0 +1,533 @@
+ <!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EHS App Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .menu-card { transition: all 0.2s ease-in-out; }
+
+        .menu-card:active { transform: scale(0.95); }
+
+       
+
+        /* [ĐÃ SỬA] Thêm !important để thắng Tailwind */
+
+        #toast-container { transition: all 0.3s ease-in-out; }
+
+        .toast-show { transform: translateY(0) !important; opacity: 1 !important; }
+
+        .toast-hide { transform: translateY(150%) !important; opacity: 0 !important; }
+
+    </style>
+
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+
+
+    <!-- HEADER -->
+
+    <header class="bg-emerald-700 text-white shadow-lg z-10">
+
+        <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+
+            <div class="flex items-center space-x-2">
+
+                <button id="btn-back" class="hidden p-2 hover:bg-emerald-600 rounded-full transition" onclick="goBack()"><i class="ph ph-arrow-left text-xl"></i></button>
+
+                <div><h1 class="text-lg font-bold leading-tight">EHS Mobile</h1><p class="text-xs text-emerald-200" id="current-path">Dashboard</p></div>
+
+            </div>
+
+            <button onclick="loadDataFromSheet()" class="p-2 hover:bg-emerald-600 rounded-full"><i class="ph ph-arrows-clockwise text-2xl"></i></button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- MAIN CONTENT -->
+
+    <main class="flex-1 overflow-y-auto p-4 relative" id="main-container">
+
+        <div id="menu-grid" class="grid grid-cols-2 gap-4 max-w-md mx-auto pb-20"></div>
+
+    </main>
+
+
+
+    <!-- FOOTER NAV -->
+
+    <nav class="bg-white border-t border-gray-200 py-2 px-6 shadow-lg z-10">
+
+        <div class="max-w-md mx-auto flex justify-between items-center">
+
+            <button onclick="resetToRoot()" class="flex flex-col items-center text-emerald-600"><i class="ph-fill ph-house text-2xl"></i><span class="text-[10px] font-medium mt-1">Trang chủ</span></button>
+
+            <button class="flex flex-col items-center text-gray-400 hover:text-emerald-600 transition"><i class="ph ph-bell text-2xl"></i><span class="text-[10px] font-medium mt-1">Thông báo</span></button>
+
+            <button class="flex flex-col items-center text-gray-400 hover:text-emerald-600 transition"><i class="ph ph-user text-2xl"></i><span class="text-[10px] font-medium mt-1">Tài khoản</span></button>
+
+        </div>
+
+    </nav>
+
+
+
+    <!-- LOADING & ERROR -->
+
+    <div id="loading" class="fixed inset-0 flex flex-col items-center justify-center bg-gray-100/90 z-50">
+
+        <div class="loader mb-4"></div><p class="text-gray-500 text-sm">Đang xử lý...</p>
+
+    </div>
+
+    <div id="error-msg" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-gray-100 z-50 text-center px-4">
+
+        <i class="ph ph-warning-circle text-4xl text-red-500 mb-2"></i>
+
+        <p class="text-red-600 font-bold">Lỗi kết nối</p>
+
+        <p class="text-gray-500 text-sm mb-4" id="error-text"></p>
+
+        <button onclick="loadDataFromSheet()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg">Thử lại</button>
+
+    </div>
+
+
+
+    <!-- [ĐÃ SỬA] Thêm class 'hidden' mặc định và bỏ 'transform' để tránh xung đột -->
+
+    <div id="toast-container" class="fixed bottom-20 left-4 right-4 z-[60] toast-hide hidden">
+
+        <div class="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl flex items-center justify-between">
+
+            <div class="flex items-center gap-3">
+
+                <div id="toast-icon"><div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div></div>
+
+                <span id="toast-msg" class="text-sm font-medium">Đang gửi dữ liệu...</span>
+
+            </div>
+
+            <button onclick="hideToast()" class="text-gray-400 hover:text-white"><i class="ph ph-x"></i></button>
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+        let allMenuData = []; let navigationStack = ['ROOT']; let currentParentName = 'Dashboard';
+
+        window.onload = function() { loadDataFromSheet(); };
+
+
+
+        function loadDataFromSheet() {
+
+            document.getElementById('loading').classList.remove('hidden');
+
+            document.getElementById('error-msg').classList.add('hidden');
+
+           
+
+            const mainContainer = document.getElementById('main-container');
+
+            if (!document.getElementById('menu-grid')) {
+
+                mainContainer.innerHTML = '<div id="menu-grid" class="grid grid-cols-2 gap-4 max-w-md mx-auto pb-20"></div>';
+
+            } else { document.getElementById('menu-grid').innerHTML = ''; }
+
+
+
+            document.getElementById('current-path').innerText = 'Dashboard';
+
+            document.getElementById('btn-back').classList.add('hidden');
+
+
+
+            google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).getMenuData();
+
+        }
+
+
+
+        function onSuccess(dataJson) {
+
+            try { allMenuData = JSON.parse(dataJson); resetToRoot(); document.getElementById('loading').classList.add('hidden'); } catch (e) { onFailure(e.message); }
+
+        }
+
+        function onFailure(error) {
+
+            document.getElementById('loading').classList.add('hidden');
+
+            document.getElementById('error-msg').classList.remove('hidden');
+
+            document.getElementById('error-text').innerText = error.message || String(error);
+
+        }
+
+
+
+        function renderMenu(parentId) {
+
+            const grid = document.getElementById('menu-grid'); grid.innerHTML = '';
+
+            const items = allMenuData.filter(item => item.parent == parentId).sort((a,b) => a.order - b.order);
+
+            if (items.length === 0) { grid.innerHTML = `<div class="col-span-2 text-center text-gray-400 mt-10">Trống</div>`; return; }
+
+            items.forEach(item => grid.appendChild(createMenuCard(item)));
+
+            updateHeaderState(parentId);
+
+        }
+
+
+
+        function createMenuCard(item) {
+
+            const div = document.createElement('div'); const isRoot = item.parent === 'ROOT';
+
+            let bgClass = item.color ? item.color : (isRoot ? 'bg-emerald-600' : 'bg-white');
+
+            let textClass = bgClass.includes('white') ? 'text-gray-800' : 'text-white';
+
+            let borderClass = bgClass.includes('white') ? 'border border-gray-200 shadow-sm' : 'shadow-md';
+
+            let iconHtml = bgClass.includes('white') ? `<div class="bg-gray-100 text-emerald-700 p-2 rounded-full mb-2"><i class="ph ph-${item.icon} text-2xl"></i></div>` : `<i class="ph ph-${item.icon} text-4xl opacity-80 mb-2"></i>`;
+
+            div.className = `menu-card ${bgClass} ${textClass} ${borderClass} rounded-2xl p-4 h-32 flex flex-col items-center justify-center text-center cursor-pointer relative overflow-hidden`;
+
+            div.innerHTML = `${iconHtml}<span class="font-bold text-sm leading-tight line-clamp-2">${item.name}</span>`;
+
+            div.onclick = () => handleMenuClick(item);
+
+            return div;
+
+        }
+
+
+
+        function handleMenuClick(item) {
+
+            if (item.type === 'FOLDER') { navigationStack.push(item.id); currentParentName = item.name; renderMenu(item.id); } else { openAction(item); }
+
+        }
+
+
+
+        function openAction(item) {
+
+    if(item.action && item.action.startsWith('http')) {
+
+        window.open(item.action, '_blank');
+
+        return;
+
+    }
+
+
+
+    function showMsdsModule() {
+
+    document.getElementById('loading').classList.remove('hidden');
+
+    google.script.run.withSuccessHandler(function(htmlContent) {
+
+        const mainContainer = document.getElementById('main-container');
+
+        mainContainer.innerHTML = htmlContent;
+
+        // Kích hoạt thẻ script (Copy logic cũ)
+
+        const scripts = mainContainer.querySelectorAll("script");
+
+        scripts.forEach(oldScript => {
+
+            const newScript = document.createElement("script");
+
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+
+        });
+
+        document.getElementById('loading').classList.add('hidden');
+
+        document.getElementById('current-path').innerText = "Tra cứu MSDS";
+
+        document.getElementById('btn-back').classList.remove('hidden');
+
+    }).loadMsdsModule();
+
+}
+
+    // --- THÊM LOGIC MSDS VÀO ĐÂY ---
+
+    if (item.action === 'OPEN_MSDS') {
+
+        showMsdsModule(); // Gọi hàm mở Module MSDS
+
+        return;
+
+    }
+
+    // --- [THÊM ĐOẠN NÀY VÀO] ---
+
+    if (item.action === 'OPEN_STATS') {
+
+        document.getElementById('loading').classList.remove('hidden');
+
+        google.script.run.withSuccessHandler(function(html) {
+
+             const mainContainer = document.getElementById('main-container');
+
+             mainContainer.innerHTML = html;
+
+             
+
+             // Kích hoạt script trong nội dung mới load
+
+             const scripts = mainContainer.querySelectorAll("script");
+
+             scripts.forEach(oldScript => {
+
+                 const newScript = document.createElement("script");
+
+                 Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+
+                 newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+
+                 oldScript.parentNode.replaceChild(newScript, oldScript);
+
+             });
+
+             
+
+             document.getElementById('loading').classList.add('hidden');
+
+             document.getElementById('current-path').innerText = "Thống kê";
+
+             document.getElementById('btn-back').classList.remove('hidden');
+
+             
+
+             // Ghi đè nút Back để quay lại Menu
+
+             window.goBack = function() {
+
+                 loadDataFromSheet();
+
+             };
+
+             
+
+        }).loadStatisticsModule();
+
+        return;
+
+    }
+
+    // --------------------------------
+
+   
+
+    if(item.action === 'OPEN_CHECKLIST') {
+
+        showChecklistModule(item.id, item.name);
+
+    } else {
+
+        alert(`Chức năng: ${item.name}`);
+
+    }
+
+}
+
+
+
+        function showChecklistModule(menuID, menuName) {
+
+            document.getElementById('loading').classList.remove('hidden');
+
+            google.script.run.withSuccessHandler(function(htmlContent) {
+
+                const mainContainer = document.getElementById('main-container');
+
+                mainContainer.innerHTML = htmlContent;
+
+                const scripts = mainContainer.querySelectorAll("script");
+
+                scripts.forEach(oldScript => {
+
+                    const newScript = document.createElement("script");
+
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+
+                });
+
+                document.getElementById('loading').classList.add('hidden');
+
+                document.getElementById('current-path').innerText = menuName;
+
+                document.getElementById('btn-back').classList.remove('hidden');
+
+                setTimeout(() => { if(typeof autoSelectArea === "function") autoSelectArea(menuID); }, 200);
+
+            }).loadChecklistForm();
+
+        }
+
+
+
+        function goBack() {
+
+            if(document.getElementById('form-container') || document.getElementById('form-body')) { loadDataFromSheet(); return; }
+
+            if (navigationStack.length > 1) {
+
+                navigationStack.pop(); const previousId = navigationStack[navigationStack.length - 1];
+
+                const parentItem = allMenuData.find(i => i.id == previousId);
+
+                currentParentName = parentItem ? parentItem.name : 'Dashboard';
+
+                renderMenu(previousId);
+
+            }
+
+        }
+
+
+
+        function resetToRoot() {
+
+            if(!document.getElementById('menu-grid')) { loadDataFromSheet(); }
+
+            else { navigationStack = ['ROOT']; currentParentName = 'Dashboard'; renderMenu('ROOT'); }
+
+        }
+
+
+
+        function updateHeaderState(parentId) {
+
+            const btnBack = document.getElementById('btn-back');
+
+            document.getElementById('current-path').innerText = currentParentName;
+
+            parentId === 'ROOT' ? btnBack.classList.add('hidden') : btnBack.classList.remove('hidden');
+
+        }
+
+
+
+        // --- [ĐÃ SỬA] HÀM QUẢN LÝ TOAST ---
+
+        function showToast(msg, type = 'loading') {
+
+            const container = document.getElementById('toast-container');
+
+            const icon = document.getElementById('toast-icon');
+
+            const text = document.getElementById('toast-msg');
+
+           
+
+            text.innerText = msg;
+
+           
+
+            // Xóa hidden trước để nó hiện ra (nhưng vẫn còn opacity 0)
+
+            container.classList.remove('hidden');
+
+            // Dùng timeout siêu nhỏ để kích hoạt hiệu ứng transition
+
+            setTimeout(() => {
+
+                container.classList.remove('toast-hide');
+
+                container.classList.add('toast-show');
+
+            }, 10);
+
+
+
+            if (type === 'success') {
+
+                icon.innerHTML = '<i class="ph-fill ph-check-circle text-green-400 text-xl"></i>';
+
+                setTimeout(hideToast, 3000);
+
+            } else if (type === 'error') {
+
+                icon.innerHTML = '<i class="ph-fill ph-warning-circle text-red-400 text-xl"></i>';
+
+            } else {
+
+                icon.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>';
+
+            }
+
+        }
+
+
+
+        function hideToast() {
+
+            const container = document.getElementById('toast-container');
+
+            container.classList.remove('toast-show');
+
+            container.classList.add('toast-hide');
+
+            // Đợi hiệu ứng trượt xuống xong (0.3s) thì mới ẩn hoàn toàn bằng display:none
+
+            setTimeout(() => {
+
+                container.classList.add('hidden');
+
+            }, 300);
+
+        }
+
+    </script>
+
+</body>
+
+</html>
