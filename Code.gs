@@ -122,6 +122,9 @@ function loadMsdsModule() {
   // PHẢI DÙNG createTemplateFromFile THÌ MỚI HIỂU HÀM include()
   return HtmlService.createTemplateFromFile('MSDS').evaluate().getContent();
 }
+function loadLegalSearchModule() {
+  return HtmlService.createTemplateFromFile('LegalSearch').evaluate().getContent();
+}
 
 // 2. Hàm gọi module Checklist (Nên sửa luôn cho đồng bộ)
 function loadChecklistForm() {
@@ -129,4 +132,7 @@ function loadChecklistForm() {
 }
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+function loadLegalSearchModule() {
+  return HtmlService.createTemplateFromFile('LegalSearch').evaluate().getContent();
 }
