@@ -1,16 +1,59 @@
 // FILE: StatisticsBackend.gs
-// [BẢN V3.4 - FIX LỖI HIỂN THỊ ẢNH & TRẠNG THÁI]
+// [BẢN V4.0 - ĐÃ CẬP NHẬT LỌC KHU VỰC + GIỮ NGUYÊN LOGIC KẾ HOẠCH]
 
-function getTrackingStats(filterType) {
+// --- 1. HÀM MỚI: LẤY DANH SÁCH KHU VỰC (Cho Dropdown) ---
+function getChecklistAreas(checklistId) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Checklist_Master"); // Lấy từ Master chuẩn hơn History
+  if (!sheet) return [];
+  
+  var data = sheet.getDataRange().getValues();
+  data.shift(); // Bỏ header
+  
+  var areas = [];
+  var distinct = {};
+  
+  // Tìm cấu hình trong Master để lấy danh sách khu vực
+  // Cấu trúc Master: ID (Col A), Câu hỏi (Col B)... Option (Col G)
+  // Option có dạng: "Khu vực A: Máy 1, Máy 2 || Khu vực B: Máy 3"
+  
+  // Mapping ID phiếu với Mã câu hỏi chứa địa điểm (Lấy từ CONFIG bên dưới)
+  // Tạm thời hardcode logic tìm dòng chứa danh sách địa điểm
+  var targetQ = "Q02"; // Đa số là Q02, riêng Lab/NBC là Q01
+  if (checklistId === 'CHECKLAB' || checklistId === 'CHECKNBC') targetQ = "Q01";
+
+  var row = data.find(r => String(r[0]) === checklistId && String(r[1]) === targetQ);
+  
+  if (row) {
+    var optionsStr = String(row[6]); // Cột G
+    if (optionsStr.includes("||")) {
+       var groups = optionsStr.split("||");
+       groups.forEach(g => {
+         var parts = g.split(":");
+         if (parts.length > 0) {
+           var areaName = parts[0].trim();
+           if (areaName && !distinct[areaName]) {
+             distinct[areaName] = true;
+             areas.push(areaName);
+           }
+         }
+       });
+    }
+  }
+  return areas.sort();
+}
+
+// --- 2. HÀM CHÍNH: LẤY THỐNG KÊ (Đã thêm tham số areaFilter) ---
+function getTrackingStats(filterType, areaFilter) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheetRecords = ss.getSheetByName("Checklist_Records");
     var sheetMaster = ss.getSheetByName("Checklist_Master");
-    var sheetMenu = ss.getSheetByName("MenuData"); 
-    
+    var sheetMenu = ss.getSheetByName("MenuData");
+
     if (!sheetRecords || !sheetMaster || !sheetMenu) return JSON.stringify({ error: true, message: "Thiếu Sheet dữ liệu" });
 
-    // --- 1. CONFIG & MAPPING ---
+    // --- CONFIG & MAPPING (GIỮ NGUYÊN) ---
     const CONFIG = {
       'CHECKPLANT':     { areaQ: 'Q01', locQ: 'Q02', masterQ: 'Q02', hasArea: true },
       'CHECKWAREHOUSE': { areaQ: 'Q01', locQ: 'Q02', masterQ: 'Q02', hasArea: true },
@@ -19,20 +62,14 @@ function getTrackingStats(filterType) {
       'CHECKNBC':       { areaQ: 'Q01', locQ: '',    masterQ: 'Q01', hasArea: true } 
     };
 
-    // Cấu hình ID câu hỏi Tên
     const NAME_QID_MAP = {
-      'CHECKPLANT': 'Q03',      
-      'CHECKWAREHOUSE': 'Q03',  
-      'CHECKLAB': 'Q02',        
-      'CHECKHR': 'Q03',         
-      'CHECKNBC': 'Q02'         
+      'CHECKPLANT': 'Q03', 'CHECKWAREHOUSE': 'Q03', 'CHECKLAB': 'Q02', 'CHECKHR': 'Q03', 'CHECKNBC': 'Q02'
     };
 
-    // Đọc MenuData để lấy tần suất
+    // Đọc MenuData lấy tần suất
     var menuData = sheetMenu.getDataRange().getValues();
     menuData.shift();
-    
-    var freqMap = {}; 
+    var freqMap = {};
     menuData.forEach(r => {
         var id = String(r[0]);
         var note = String(r[8]); 
@@ -43,28 +80,29 @@ function getTrackingStats(filterType) {
         }
     });
 
-    // --- 2. XỬ LÝ THỜI GIAN ---
+    // --- XỬ LÝ THỜI GIAN (GIỮ NGUYÊN) ---
     var now = new Date();
     var startDate = new Date(now.setHours(0,0,0,0));
     var endDate = new Date(now.setHours(23,59,59,999));
 
     if (filterType === 'WEEK') {
-       var day = now.getDay(); 
-       var diff = now.getDate() - day + (day == 0 ? -6 : 1); // Thứ 2
+       var day = now.getDay();
+       var diff = now.getDate() - day + (day == 0 ? -6 : 1);
        startDate = new Date(now.setDate(diff)); startDate.setHours(0,0,0,0);
-       endDate = new Date(startDate); endDate.setDate(startDate.getDate() + 6); endDate.setHours(23,59,59);
+       endDate = new Date(startDate);
+       endDate.setDate(startDate.getDate() + 6); endDate.setHours(23,59,59);
     } else if (filterType === 'MONTH') {
        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    } else if (filterType.includes(',')) { // Custom range
+    } else if (filterType.includes(',')) { 
        var parts = filterType.split(',');
        startDate = new Date(parts[0]); startDate.setHours(0,0,0,0);
        endDate = new Date(parts[1]); endDate.setHours(23,59,59,999);
     }
 
-    // --- 3. LẤY KẾ HOẠCH (PLAN) ---
+    // --- LẤY KẾ HOẠCH TỪ MASTER (GIỮ NGUYÊN) ---
     var masterData = sheetMaster.getDataRange().getValues();
-    masterData.shift(); 
+    masterData.shift();
     var planMap = {}; 
     Object.keys(CONFIG).forEach(chkId => {
        planMap[chkId] = [];
@@ -89,11 +127,11 @@ function getTrackingStats(filterType) {
        }
     });
 
-    // --- 4. LẤY DỮ LIỆU THỰC TẾ & FIX LỖI ---
+    // --- LẤY DỮ LIỆU THỰC TẾ (GIỮ NGUYÊN) ---
     var lastRow = sheetRecords.getLastRow();
     var recordsData = (lastRow >= 2) ? sheetRecords.getRange(2, 2, lastRow - 1, 5).getValues() : [];
-    var actualMap = {}; 
-
+    var actualMap = {};
+    
     recordsData.forEach(row => {
         if(!row[0] || !row[1]) return;
         var rDate = new Date(row[0]);
@@ -106,7 +144,7 @@ function getTrackingStats(filterType) {
             var user = row[2] ? String(row[2]).split(" - ")[0] : "N/A";
             var jsonStr = row[4];
             
-            // Fix Lỗi N/A Tên
+            // Fix tên N/A
             if ((user === "N/A" || user === "") && jsonStr) {
                 try {
                     var parsed = JSON.parse(jsonStr);
@@ -118,15 +156,12 @@ function getTrackingStats(filterType) {
                 } catch(e) {}
             }
 
-            // --- TRÍCH XUẤT LỖI (QUAN TRỌNG: LẤY CẢ ẢNH) ---
             var issues = [];
             var areaVal = "", locVal = "";
-
             if (jsonStr) {
                 try {
                     var answers = JSON.parse(jsonStr);
                     var conf = CONFIG[chkId];
-                    
                     if(conf.hasArea) {
                        var qA = answers.find(a => a.qId == conf.areaQ);
                        if(qA) areaVal = qA.value;
@@ -135,9 +170,7 @@ function getTrackingStats(filterType) {
                     if(qL) locVal = qL.value;
 
                     answers.forEach(a => {
-                        // Logic xác định lỗi
                         if (a.value === 'NO' || (typeof a.value === 'string' && a.value.includes('Fail'))) {
-                            // [FIX QUAN TRỌNG] Đẩy cả object đầy đủ vào để Frontend hiển thị ảnh/note
                             issues.push({
                                 question: a.question,
                                 value: a.value,
@@ -161,9 +194,8 @@ function getTrackingStats(filterType) {
         }
     });
 
-    // --- 5. TỔNG HỢP HIỂN THỊ ---
+    // --- TỔNG HỢP HIỂN THỊ (CÓ SỬA ĐỔI ĐỂ LỌC KHU VỰC) ---
     var result = {};
-
     Object.keys(CONFIG).forEach(chkId => {
         var freq = freqMap[chkId] || 'DAILY';
         var viewMode = 'DETAIL'; 
@@ -184,13 +216,18 @@ function getTrackingStats(filterType) {
         var planList = planMap[chkId] || [];
 
         planList.forEach(p => {
+            // [MỚI] LOGIC LỌC KHU VỰC TẠI ĐÂY
+            // Nếu có filter và filter != ALL và Khu vực của dòng này != filter thì BỎ QUA
+            if (areaFilter && areaFilter !== 'ALL' && areaFilter !== '' && p.area !== areaFilter) {
+                return; // Skip dòng này
+            }
+            // --------------------------------
+
             var key = chkId + "_" + (p.area||"").trim() + "_" + (p.loc||"").trim();
             var checks = actualMap[key] || [];
             
             if (viewMode === 'DETAIL') {
                 var lastCheck = checks.length > 0 ? checks[checks.length-1] : null;
-                
-                // [FIX QUAN TRỌNG] Tạo biến trạng thái chuẩn cho Frontend
                 var statusResult = "MISSING";
                 if (lastCheck) {
                     statusResult = (lastCheck.issues.length > 0) ? "FAIL" : "PASS";
@@ -202,8 +239,8 @@ function getTrackingStats(filterType) {
                     inspector: lastCheck ? lastCheck.inspector : "-",
                     time: lastCheck ? lastCheck.timeStr : "-",
                     issues: lastCheck ? lastCheck.issues : [],
-                    status: statusResult, // Dùng cho logic màu sắc
-                    result: statusResult  // [FIX] Dùng cho hiển thị chữ (Frontend tìm biến này)
+                    status: statusResult, 
+                    result: statusResult 
                 });
             } else {
                 var uniqueDays = countUniqueDays(checks);
@@ -232,7 +269,7 @@ function getTrackingStats(filterType) {
   }
 }
 
-// --- HÀM PHỤ TRỢ ---
+// --- HÀM PHỤ TRỢ (GIỮ NGUYÊN) ---
 function countWorkingDays(start, end) {
     var count = 0;
     var cur = new Date(start);
@@ -241,7 +278,7 @@ function countWorkingDays(start, end) {
         if (day !== 0 && day !== 6) count++; 
         cur.setDate(cur.getDate() + 1);
     }
-    return count > 0 ? count : 1; 
+    return count > 0 ? count : 1;
 }
 
 function countUniqueDays(checks) {
