@@ -197,6 +197,21 @@
       list.forEach(function(item, index) {
         var btn = document.createElement('div');
         btn.className = 'tab-item';
+        if (item.name === 'Kiểm tra EHS nhà máy') {
+            item.name = 'Nhà máy';
+        }
+               if (item.name === 'Kiểm tra EHS kho') {
+            item.name = 'Kho';
+        }
+         if (item.name === 'Kiểm tra EHS QC-LAB') {
+            item.name = 'QC-LAB';
+        }
+               if (item.name === 'Kiểm tra EHS Văn phòng') {
+            item.name = 'Văn phòng';
+        }
+               if (item.name === 'Kiểm tra EHS-NBC') {
+            item.name = 'NBC';
+        }
         var iconClass = item.icon ? 'ph-' + item.icon : 'ph-clipboard-text';
         btn.innerHTML = '<i class="ph ' + iconClass + '"></i>' + item.name;
         btn.onclick = function() { onTabClick(item.id, btn); };
