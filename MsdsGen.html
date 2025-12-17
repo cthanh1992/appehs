@@ -85,10 +85,17 @@
     let gIsRunning = false;
 
     // Load danh sách khi mở
-    google.script.run.withSuccessHandler((list) => {
-       gMaterialList = list;
-       renderSelect();
-    }).getMaterialList();
+    google.script.run
+      .withSuccessHandler((list) => {
+         gMaterialList = list;
+         renderSelect();
+      })
+      .withFailureHandler((err) => {
+         // Nếu lỗi, hiện thông báo đỏ lòm cho dễ thấy
+         document.getElementById('material-select').innerHTML = '<option>Lỗi kết nối!</option>';
+         alert("LỖI TẢI DỮ LIỆU:\n" + err.message);
+      })
+      .getMaterialList();
 
     function renderSelect() {
        const sel = document.getElementById('material-select');
