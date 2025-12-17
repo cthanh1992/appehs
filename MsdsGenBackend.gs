@@ -7,7 +7,7 @@ const GEN_CONFIG = {
   OUTPUT_FOLDER_ID: '1Qjudj6SRO6vtMq2EBl5VYBxtcIvWzalX', // <-- Đã lấy lại ID folder chuẩn từ file cấu hình của bạn
   
   SHEET_INPUT: 'Input',           
-  SHEET_LINK: 'link GHS+PPE', // <-- Chú ý: Tên Sheet chứa link ảnh phải chính xác
+  SHEET_LINK: 'GHSPPE', // <-- Chú ý: Tên Sheet chứa link ảnh phải chính xác
   
   MARKERS: ['x', 'v', 'có', 'yes', '√'] 
 };
