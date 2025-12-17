@@ -2,12 +2,11 @@
 <html>
 <head>
   <base target="_top">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
-    .tab-active { border-bottom: 2px solid #059669; color: #059669; font-weight: 600; }
-    .tab-inactive { color: #6b7280; }
-    .log-item { font-size: 11px; padding: 4px 0; border-bottom: 1px dashed #eee; }
+    /* CSS Riêng cho Module này */
+    .msds-tab-active { border-bottom: 2px solid #059669; color: #059669; font-weight: 600; }
+    .msds-tab-inactive { color: #6b7280; }
+    .msds-log-item { font-size: 11px; padding: 4px 0; border-bottom: 1px dashed #eee; }
   </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col font-sans select-none">
@@ -17,16 +16,15 @@
        <i class="ph-fill ph-file-pdf text-yellow-400 text-xl"></i>
        <h2 class="font-bold">Tạo MSDS Tự Động</h2>
     </div>
-    <button onclick="google.script.run.loadDataFromSheet()" class="text-gray-400 hover:text-white"><i class="ph-bold ph-x text-xl"></i></button>
+    <button onclick="window.goBack ? window.goBack() : google.script.run.loadDataFromSheet()" class="text-gray-400 hover:text-white"><i class="ph-bold ph-x text-xl"></i></button>
   </div>
 
   <div class="flex bg-white border-b border-gray-200">
-    <button onclick="switchMode('SINGLE')" id="tab-SINGLE" class="flex-1 py-3 text-sm tab-active">Tạo Lẻ (1 File)</button>
-    <button onclick="switchMode('BATCH')" id="tab-BATCH" class="flex-1 py-3 text-sm tab-inactive">Tạo Hàng Loạt</button>
+    <button onclick="switchMsdsMode('SINGLE')" id="tab-SINGLE" class="flex-1 py-3 text-sm msds-tab-active">Tạo Lẻ (1 File)</button>
+    <button onclick="switchMsdsMode('BATCH')" id="tab-BATCH" class="flex-1 py-3 text-sm msds-tab-inactive">Tạo Hàng Loạt</button>
   </div>
 
   <div class="p-4 flex-1 overflow-y-auto">
-    
     <div id="view-SINGLE" class="space-y-4">
        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Chọn nguyên liệu</label>
@@ -34,12 +32,10 @@
              <option>Đang tải danh sách...</option>
           </select>
        </div>
-
-       <button onclick="runSingle()" id="btn-single" class="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+       <button onclick="runSingleGen()" id="btn-single" class="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
           <i class="ph-bold ph-play"></i> Tạo File Ngay
        </button>
-
-       <div id="single-result" class="hidden mt-4 p-4 bg-green-50 border border-green-100 rounded-xl text-center">
+       <div id="single-result" class="hidden mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
           <i class="ph-fill ph-check-circle text-green-500 text-3xl mb-2"></i>
           <p class="text-sm font-bold text-green-700">Đã tạo xong!</p>
           <a id="single-link" href="#" target="_blank" class="text-xs text-blue-600 underline mt-1 block">Mở file PDF</a>
@@ -49,19 +45,17 @@
     <div id="view-BATCH" class="hidden space-y-4">
        <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 flex gap-2">
           <i class="ph-fill ph-info text-lg"></i>
-          <div>Hệ thống sẽ chạy lần lượt từng dòng để tránh lỗi quá tải. Vui lòng không tắt App khi đang chạy.</div>
+          <div>Hệ thống sẽ chạy lần lượt từng dòng để tránh quá tải.</div>
        </div>
-
        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100">
           <div>
              <div class="text-xs text-gray-400">Tiến độ</div>
              <div class="font-bold text-lg text-slate-700"><span id="done-count">0</span> / <span id="total-count">0</span></div>
           </div>
-          <button onclick="runBatch()" id="btn-batch" class="px-6 py-2 bg-orange-500 text-white rounded-lg font-bold shadow active:scale-95 transition">
+          <button onclick="runBatchGen()" id="btn-batch" class="px-6 py-2 bg-orange-500 text-white rounded-lg font-bold shadow active:scale-95 transition">
              Bắt đầu chạy
           </button>
        </div>
-
        <div class="bg-white rounded-xl border border-gray-200 h-64 flex flex-col">
           <div class="p-2 border-b bg-gray-50 text-xs font-bold text-gray-500">Nhật ký xử lý</div>
           <div id="batch-log" class="flex-1 overflow-y-auto p-2 font-mono text-gray-600 space-y-1">
@@ -69,10 +63,9 @@
           </div>
        </div>
     </div>
-
   </div>
 
-  <div id="loading" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+  <div id="msds-loading" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div class="bg-white p-5 rounded-2xl flex flex-col items-center">
          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-2"></div>
          <div class="text-sm font-medium text-gray-600">Đang xử lý...</div>
@@ -80,27 +73,34 @@
   </div>
 
   <script>
-    let gMaterialList = [];
-    let gBatchQueue = [];
-    let gIsRunning = false;
+    var gMaterialList = [];
+    var gBatchQueue = [];
+    var gIsRunning = false;
 
-    // Load danh sách khi mở
-    google.script.run
-       .withSuccessHandler((list) => {
-          gMaterialList = list;
-          renderSelect();
-       })
-       .withFailureHandler((err) => {  // <--- THÊM ĐOẠN NÀY
-          document.getElementById('material-select').innerHTML = '<option>Lỗi kết nối!</option>';
-          alert("LỖI: " + err.message); // Nó sẽ hiện thông báo lỗi cụ thể
-       })
-       .getMaterialList();
+    (function() {
+        loadMaterialData();
+    })();
 
-    function renderSelect() {
-       const sel = document.getElementById('material-select');
+    function loadMaterialData() {
+        google.script.run
+            .withSuccessHandler(function(list) {
+                gMaterialList = list;
+                renderSelectMsds();
+            })
+            .withFailureHandler(function(err) {
+                var sel = document.getElementById('material-select');
+                if(sel) sel.innerHTML = '<option>Lỗi tải dữ liệu</option>';
+                alert("Lỗi Backend: " + err.message);
+            })
+            .getMaterialList();
+    }
+
+    function renderSelectMsds() {
+       var sel = document.getElementById('material-select');
+       if(!sel) return;
        sel.innerHTML = '';
-       gMaterialList.forEach((item, idx) => {
-          let opt = document.createElement('option');
+       gMaterialList.forEach(function(item) {
+          var opt = document.createElement('option');
           opt.value = item.rowIndex;
           opt.innerText = item.name;
           sel.appendChild(opt);
@@ -108,25 +108,23 @@
        document.getElementById('total-count').innerText = gMaterialList.length;
     }
 
-    function switchMode(mode) {
+    function switchMsdsMode(mode) {
        document.getElementById('view-SINGLE').classList.toggle('hidden', mode !== 'SINGLE');
        document.getElementById('view-BATCH').classList.toggle('hidden', mode !== 'BATCH');
-       
-       document.getElementById('tab-SINGLE').className = mode === 'SINGLE' ? 'flex-1 py-3 text-sm tab-active' : 'flex-1 py-3 text-sm tab-inactive';
-       document.getElementById('tab-BATCH').className = mode === 'BATCH' ? 'flex-1 py-3 text-sm tab-active' : 'flex-1 py-3 text-sm tab-inactive';
+       document.getElementById('tab-SINGLE').className = mode === 'SINGLE' ? 'flex-1 py-3 text-sm msds-tab-active' : 'flex-1 py-3 text-sm msds-tab-inactive';
+       document.getElementById('tab-BATCH').className = mode === 'BATCH' ? 'flex-1 py-3 text-sm msds-tab-active' : 'flex-1 py-3 text-sm msds-tab-inactive';
     }
 
-    // --- XỬ LÝ SINGLE ---
-    function runSingle() {
-       const rowIndex = document.getElementById('material-select').value;
-       document.getElementById('loading').classList.remove('hidden');
+    function runSingleGen() {
+       var rowIndex = document.getElementById('material-select').value;
+       document.getElementById('msds-loading').classList.remove('hidden');
        document.getElementById('single-result').classList.add('hidden');
 
-       google.script.run.withSuccessHandler((res) => {
-          document.getElementById('loading').classList.add('hidden');
+       google.script.run.withSuccessHandler(function(res) {
+          document.getElementById('msds-loading').classList.add('hidden');
           if(res.success) {
              document.getElementById('single-result').classList.remove('hidden');
-             const link = document.getElementById('single-link');
+             var link = document.getElementById('single-link');
              link.href = res.url;
              link.innerText = "Mở file: " + res.name;
           } else {
@@ -135,55 +133,46 @@
        }).generateSingleMsds(rowIndex);
     }
 
-    // --- XỬ LÝ BATCH (QUAN TRỌNG) ---
-    function runBatch() {
+    function runBatchGen() {
        if(gIsRunning) return;
        gIsRunning = true;
-       
-       // Copy danh sách để chạy dần
-       gBatchQueue = [...gMaterialList]; 
+       gBatchQueue = [].concat(gMaterialList); 
        document.getElementById('btn-batch').innerText = "Đang chạy...";
        document.getElementById('btn-batch').classList.add('opacity-50', 'cursor-not-allowed');
-       document.getElementById('batch-log').innerHTML = ''; // Clear log
-
-       processNextItem();
+       document.getElementById('batch-log').innerHTML = ''; 
+       processNextItemMsds();
     }
 
-    function processNextItem() {
+    function processNextItemMsds() {
        if (gBatchQueue.length === 0) {
-          log("✅ ĐÃ HOÀN THÀNH TẤT CẢ!", "text-green-600 font-bold");
+          logMsds("✅ HOÀN THÀNH TẤT CẢ!", "text-green-600 font-bold");
           gIsRunning = false;
           document.getElementById('btn-batch').innerText = "Hoàn tất";
           document.getElementById('btn-batch').classList.remove('opacity-50', 'cursor-not-allowed');
           return;
        }
-
-       // Lấy item đầu tiên ra xử lý
-       const item = gBatchQueue.shift(); 
-       const currentCount = gMaterialList.length - gBatchQueue.length;
+       var item = gBatchQueue.shift(); 
+       var currentCount = gMaterialList.length - gBatchQueue.length;
        document.getElementById('done-count').innerText = currentCount;
+       logMsds("⏳ Đang tạo: " + item.name + "...", "text-gray-600");
 
-       log(`⏳ Đang tạo: ${item.name}...`);
-
-       google.script.run.withSuccessHandler((res) => {
+       google.script.run.withSuccessHandler(function(res) {
           if(res.success) {
-             log(`Example: Xong ${item.name}`, "text-green-600");
+             logMsds("✔️ Xong: " + item.name, "text-green-600");
           } else {
-             log(`❌ Lỗi ${item.name}: ${res.message}`, "text-red-500");
+             logMsds("❌ Lỗi " + item.name + ": " + res.message, "text-red-500");
           }
-          // Gọi đệ quy để làm cái tiếp theo
-          processNextItem();
-
+          processNextItemMsds();
        }).generateSingleMsds(item.rowIndex);
     }
 
-    function log(msg, colorClass = "text-gray-600") {
-       const div = document.createElement('div');
-       div.className = "log-item " + colorClass;
+    function logMsds(msg, colorClass) {
+       var div = document.createElement('div');
+       div.className = "msds-log-item " + (colorClass || "text-gray-600");
        div.innerText = msg;
-       const container = document.getElementById('batch-log');
+       var container = document.getElementById('batch-log');
        container.appendChild(div);
-       container.scrollTop = container.scrollHeight; // Auto scroll
+       container.scrollTop = container.scrollHeight;
     }
   </script>
 </body>
