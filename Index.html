@@ -94,7 +94,7 @@
         function renderMenu(parentId) {
             const grid = document.getElementById('menu-grid'); grid.innerHTML = '';
             const items = allMenuData.filter(item => item.parent == parentId).sort((a,b) => a.order - b.order);
-            if (items.length === 0) { grid.innerHTML = `<div class="col-span-2 text-center text-gray-400 mt-10">Trống</div>`; return; }
+            if (items.length === 0) { grid.innerHTML = `<div class="col-span-2 text-center text-gray-400 mt-10">Tính năng đang phát triển</div>`; return; }
             items.forEach(item => grid.appendChild(createMenuCard(item)));
             updateHeaderState(parentId);
         }
@@ -145,7 +145,17 @@
                 }).loadMsdsModule();
                 return;
             }
-
+            if (item.action === 'OPEN_MSDS_GEN') {
+                document.getElementById('loading').classList.remove('hidden');
+                google.script.run.withSuccessHandler(function(html) {
+                     safeLoadModule(html);
+                     document.getElementById('loading').classList.add('hidden');
+                     document.getElementById('current-path').innerText = "Tạo MSDS";
+                     document.getElementById('btn-back').classList.remove('hidden');
+                     window.goBack = function() { loadDataFromSheet(); };
+                }).loadMsdsGenModule();
+                return;
+            }
             // 2. MODULE THỐNG KÊ
             if (item.action === 'OPEN_STATS') {
                 document.getElementById('loading').classList.remove('hidden');
