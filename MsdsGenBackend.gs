@@ -9,7 +9,7 @@ const GEN_CONFIG = {
   OUTPUT_FOLDER_ID: 'I1Qjudj6SRO6vtMq2EBl5VYBxtcIvWzalX',    // <-- Thay ID Folder lưu PDF vào đây
   
   SHEET_INPUT: 'Input',           // Tên Tab chứa dữ liệu (Lưu ý: Tab của bạn phải tên là "Input")
-  SHEET_LINK: 'GHS+PPE',     // Tên Tab chứa Link ảnh
+  SHEET_LINK: 'GHSPPE',     // Tên Tab chứa Link ảnh
   
   MARKERS: ['x', 'v', 'có', 'yes', '√'] 
 };
