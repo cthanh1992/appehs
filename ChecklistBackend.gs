@@ -6,7 +6,7 @@ const FOLDER_ID_UPLOAD = "1Tf7VmMjXPKJ0QW7I18plFnpAkIA60ENs";
 const SHEET_ID = "1kNOZMlKPIsOYXiqhqVCAJBLiBirkqxCUf0dyCFTL4JA";
 
 // 2. Email người nhận báo cáo lỗi
-const MANAGER_EMAIL = "thanhhc@hoptrisummit.com"; 
+const MANAGER_EMAIL = "cthanh1992@gmail.com"; 
 
 /**
  * Lấy câu hỏi từ Sheet Master
