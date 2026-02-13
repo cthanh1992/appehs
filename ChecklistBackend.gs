@@ -109,7 +109,7 @@ function saveDynamicReport(dataObj) {
     
     const failItems = dataObj.answers.filter(a => a.value === 'NO');
     const failCount = failItems.length;
-    const resultSummary = failCount > 0 ? (failCount + " Lỗi (Fail)") : "Đạt (Pass)";
+    const resultSummary = failCount > 0 ? (failCount + " Lỗi (Fail)"a) : "Đạt (Pass)";
 
     // Lưu vào Sheet
     sheet.appendRow([
@@ -121,11 +121,7 @@ function saveDynamicReport(dataObj) {
       JSON.stringify(dataObj.answers)
     ]);
 
-    // Gửi Email nếu có lỗi
-    if (failCount > 0 && MANAGER_EMAIL && MANAGER_EMAIL.includes("@")) {
-        sendAlertEmail(MANAGER_EMAIL, reportID, dataObj.checklistId, inspectorInfo, failItems, timestamp);
-    }
-
+    // Không gửi Email, chỉ trả về thông báo thành công
     return { success: true, message: "Đã lưu báo cáo thành công!" };
     
   } catch (e) {
@@ -133,36 +129,4 @@ function saveDynamicReport(dataObj) {
   }
 }
 
-// Hàm gửi Email HTML
-function sendAlertEmail(recipient, reportId, checklistName, inspector, failItems, time) {
-    const subject = `⚠️ CẢNH BÁO EHS: ${checklistName} - Phát hiện ${failItems.length} lỗi`;
-    
-    let rowsHtml = "";
-    failItems.forEach((item, index) => {
-        let imgLinksHtml = "";
-        if (item.imageLinks && item.imageLinks.length > 0) {
-            item.imageLinks.forEach((link, i) => {
-                imgLinksHtml += `<a href="${link}" style="color:#d93025;" target="_blank">[Ảnh ${i+1}]</a> `;
-            });
-        }
-        rowsHtml += `
-        <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:10px;border:1px solid #ddd;">${index + 1}</td>
-            <td style="padding:10px;border:1px solid #ddd;"><strong>${item.question}</strong></td>
-            <td style="padding:10px;border:1px solid #ddd;color:#d93025;">${item.note || ""}</td>
-            <td style="padding:10px;border:1px solid #ddd;">${imgLinksHtml}</td>
-        </tr>`;
-    });
-
-    const htmlBody = `
-    <div style="font-family:Arial,sans-serif;color:#333;">
-        <h2 style="background-color:#d93025;color:white;padding:10px;">BÁO CÁO SỰ CỐ AN TOÀN</h2>
-        <p><strong>Mã:</strong> ${reportId} | <strong>Người kiểm tra:</strong> ${inspector} | <strong>Thời gian:</strong> ${time.toLocaleString("vi-VN")}</p>
-        <table style="width:100%;border-collapse:collapse;">
-            <tr style="background-color:#f2f2f2;"><th style="padding:10px;border:1px solid #ddd;">STT</th><th style="padding:10px;border:1px solid #ddd;">Nội dung</th><th style="padding:10px;border:1px solid #ddd;">Lỗi</th><th style="padding:10px;border:1px solid #ddd;">Ảnh</th></tr>
-            ${rowsHtml}
-        </table>
-    </div>`;
-
-    MailApp.sendEmail({ to: recipient, subject: subject, htmlBody: htmlBody });
-}
+// Đã loại bỏ hàm sendAlertEmail
