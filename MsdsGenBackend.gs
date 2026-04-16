@@ -42,21 +42,21 @@ function getChecklistAreas(checklistId) { //
 } //
 
 // --- 2. HÀM CHÍNH: LẤY THỐNG KÊ ---
-function getTrackingStats(filterType, areaFilter) { //
-  try { //
-    var ss = SpreadsheetApp.getActiveSpreadsheet(); //
-    var sheetRecords = ss.getSheetByName("Checklist_Records"); //
-    var sheetMaster = ss.getSheetByName("Checklist_Master"); //
-    var sheetMenu = ss.getSheetByName("MenuData"); //
-    if (!sheetRecords || !sheetMaster || !sheetMenu) return JSON.stringify({ error: true, message: "Thiếu Sheet dữ liệu" }); //
+// --- 2. HÀM CHÍNH: LẤY THỐNG KÊ ---
+function getTrackingStats(filterType, areaFilter) { 
+  try { 
+    var ss = SpreadsheetApp.getActiveSpreadsheet(); 
+    var sheetRecords = ss.getSheetByName("Checklist_Records"); 
+    var sheetMaster = ss.getSheetByName("Checklist_Master"); 
     var sheetMenu = ss.getSheetByName("MenuData"); 
-    var sheetHolidays = ss.getSheetByName("Holidays"); // Khai báo thêm sheet này
+    var sheetHolidays = ss.getSheetByName("Holidays"); 
+
     if (!sheetRecords || !sheetMaster || !sheetMenu) return JSON.stringify({ error: true, message: "Thiếu Sheet dữ liệu" }); 
 
     // --- LẤY DANH SÁCH NGÀY NGHỈ ---
     var holidayMap = {};
     if (sheetHolidays) {
-        var hData = sheetHolidays.getDataRange().getValues();
+          var hData = sheetHolidays.getDataRange().getValues();
         hData.shift(); // Bỏ header
         hData.forEach(r => {
             if (r[0]) {
