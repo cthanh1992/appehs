@@ -89,12 +89,22 @@
     <div class="flex-1 overflow-y-auto pr-1 pb-20 no-scrollbar">
       <div id="time-section" class="hidden mb-4 animate-fade-in">
         <div class="flex gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100" id="time-btns-container"></div>
-        <div id="custom-picker" class="hidden mt-2 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-          <div class="flex gap-2 mb-2">
-            <div class="w-1/2"><span class="text-[10px] text-gray-400">Từ</span><input type="date" id="d-start" class="w-full p-1 border rounded text-xs bg-gray-50"></div>
-            <div class="w-1/2"><span class="text-[10px] text-gray-400">Đến</span><input type="date" id="d-end" class="w-full p-1 border rounded text-xs bg-gray-50"></div>
-          </div>
-          <button onclick="loadData('CUSTOM')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow hover:bg-emerald-700">Xác nhận</button>
+        <div id="picker-container" class="hidden mt-2 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+            <div id="picker-week" class="hidden flex items-center gap-2">
+                <span class="text-[10px] text-gray-500 font-medium whitespace-nowrap">Tuần chứa ngày:</span>
+                <input type="date" id="inp-week" class="w-full p-1.5 border rounded text-xs bg-gray-50" onchange="loadData('WEEK')">
+            </div>
+            <div id="picker-month" class="hidden flex items-center gap-2">
+                <span class="text-[10px] text-gray-500 font-medium whitespace-nowrap">Chọn tháng:</span>
+                <input type="month" id="inp-month" class="w-full p-1.5 border rounded text-xs bg-gray-50" onchange="loadData('MONTH')">
+            </div>
+            <div id="picker-custom" class="hidden">
+                <div class="flex gap-2 mb-2">
+                    <div class="w-1/2"><span class="text-[10px] text-gray-400">Từ</span><input type="date" id="d-start" class="w-full p-1.5 border rounded text-xs bg-gray-50"></div>
+                    <div class="w-1/2"><span class="text-[10px] text-gray-400">Đến</span><input type="date" id="d-end" class="w-full p-1.5 border rounded text-xs bg-gray-50"></div>
+                </div>
+                <button onclick="loadData('CUSTOM')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow hover:bg-emerald-700">Xác nhận</button>
+            </div>
         </div>
       </div>
 
@@ -248,42 +258,66 @@
       var section = document.getElementById('time-section');
       var container = document.getElementById('time-btns-container');
       section.classList.remove('hidden');
-      document.getElementById('custom-picker').classList.add('hidden');
+      document.getElementById('picker-container').classList.add('hidden');
       document.getElementById('result-list').innerHTML = '';
 
       var html = '';
       if (freq === 'DAILY') {
-        html += '<button onclick="loadData(\'TODAY\', this)" class="time-btn">Hôm nay</button>';
-        html += '<button onclick="loadData(\'WEEK\', this)" class="time-btn">Tuần này</button>';
-        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+        html += '<button onclick="selectTime(\'TODAY\', this)" class="time-btn">Hôm nay</button>';
+        html += '<button onclick="selectTime(\'WEEK\', this)" class="time-btn">Tuần</button>';
+        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
       } else if (freq === 'WEEKLY') {
-        html += '<button onclick="loadData(\'WEEK\', this)" class="time-btn">Tuần này</button>';
-        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+        html += '<button onclick="selectTime(\'WEEK\', this)" class="time-btn">Tuần</button>';
+        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
       } else {
-        html += '<button onclick="loadData(\'MONTH\', this)" class="time-btn">Tháng này</button>';
+        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
       }
-      html += '<button onclick="toggleCustom(this)" class="time-btn">📅 Chọn ngày</button>';
+      html += '<button onclick="selectTime(\'CUSTOM\', this)" class="time-btn">📅 Tùy chọn</button>';
       container.innerHTML = html;
       
+      // Thiết lập ngày mặc định cho picker
+      var today = new Date();
+      var yyyy = today.getFullYear();
+      var mm = String(today.getMonth() + 1).padStart(2, '0');
+      var dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('inp-week').value = yyyy + '-' + mm + '-' + dd;
+      document.getElementById('inp-month').value = yyyy + '-' + mm;
+
       var firstBtn = container.querySelector('button');
       if(firstBtn) firstBtn.click();
     }
-    
-    function activeTimeBtn(btn) { 
+
+    // Hàm điều hướng UI Picker thay cho toggleCustom/activeTimeBtn
+    function selectTime(type, btn) {
         document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
         if(btn) btn.classList.add('active');
-    }
-    function toggleCustom(btn) { activeTimeBtn(btn); document.getElementById('custom-picker').classList.remove('hidden');
+
+        var pickerContainer = document.getElementById('picker-container');
+        document.getElementById('picker-week').classList.add('hidden');
+        document.getElementById('picker-month').classList.add('hidden');
+        document.getElementById('picker-custom').classList.add('hidden');
+
+        if (type === 'TODAY') {
+            pickerContainer.classList.add('hidden');
+            loadData('TODAY');
+        } else {
+            pickerContainer.classList.remove('hidden');
+            if (type === 'WEEK') {
+                document.getElementById('picker-week').classList.remove('hidden');
+                loadData('WEEK');
+            } else if (type === 'MONTH') {
+                document.getElementById('picker-month').classList.remove('hidden');
+                loadData('MONTH');
+            } else if (type === 'CUSTOM') {
+                document.getElementById('picker-custom').classList.remove('hidden');
+            }
+        }
     }
 
-    function loadData(type, btn) {
-      if (btn) activeTimeBtn(btn);
+    function loadData(type) {
       gCurrentTimeType = type;
-
-      if(type !== 'CUSTOM') { document.getElementById('custom-picker').classList.add('hidden'); }
       var resDiv = document.getElementById('result-list');
       
-      // Xử lý Ngày tháng (Giữ nguyên)
       if (type === 'TODAY') {
         var day = new Date().getDay();
         if (day === 0 || day === 6) { 
@@ -293,24 +327,41 @@
       }
       
       resDiv.innerHTML = '<div class="space-y-3"><div class="h-24 bg-white rounded-xl animate-pulse"></div></div>';
-      var s = new Date(), e = new Date();
+      var s, e;
+      
+      // Xử lý tạo Start Date / End Date theo Picker
       if (type === 'WEEK') {
-         var day = s.getDay();
-         var diff = s.getDate() - day + (day == 0 ? -6 : 1);
-         s.setDate(diff); e.setDate(diff + 6);
+         var dVal = document.getElementById('inp-week').value;
+         if(!dVal) return;
+         var parts = dVal.split('-');
+         var baseDate = new Date(parts[0], parts[1]-1, parts[2]);
+         var day = baseDate.getDay();
+         var diff = baseDate.getDate() - day + (day == 0 ? -6 : 1); // Đưa về Thứ 2
+         s = new Date(baseDate.setDate(diff));
+         e = new Date(s); e.setDate(s.getDate() + 6); // Cộng 6 ngày thành Chủ Nhật
       } else if (type === 'MONTH') {
-         s = new Date(s.getFullYear(), s.getMonth(), 1);
-         e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+         var mVal = document.getElementById('inp-month').value;
+         if(!mVal) return;
+         var mParts = mVal.split('-');
+         s = new Date(mParts[0], mParts[1]-1, 1);
+         e = new Date(mParts[0], mParts[1], 0); // Ngày cuối của tháng
       } else if (type === 'CUSTOM') {
          var sVal = document.getElementById('d-start').value;
          var eVal = document.getElementById('d-end').value;
          if(!sVal || !eVal) return;
-         s = new Date(sVal); e = new Date(eVal);
+         var sP = sVal.split('-'); var eP = eVal.split('-');
+         s = new Date(sP[0], sP[1]-1, sP[2]);
+         e = new Date(eP[0], eP[1]-1, eP[2]);
       }
-      var sStr = s.toISOString().split('T')[0]; var eStr = e.toISOString().split('T')[0];
-      var timeParam = type === 'CUSTOM' ? (sStr + ',' + eStr) : type;
+      
+      // Đóng gói tham số gửi lên Google Apps Script: "LOẠI,Ngày Bắt Đầu,Ngày Kết Thúc"
+      var timeParam = type;
+      if (type !== 'TODAY') {
+          var yyyyS = s.getFullYear(), mmS = String(s.getMonth()+1).padStart(2,'0'), ddS = String(s.getDate()).padStart(2,'0');
+          var yyyyE = e.getFullYear(), mmE = String(e.getMonth()+1).padStart(2,'0'), ddE = String(e.getDate()).padStart(2,'0');
+          timeParam = type + ',' + yyyyS+'-'+mmS+'-'+ddS + ',' + yyyyE+'-'+mmE+'-'+ddE;
+      }
 
-      // GỌI SERVER VỚI BỘ LỌC KHU VỰC
       google.script.run
         .withSuccessHandler(renderResults)
         .withFailureHandler(function(err) {
