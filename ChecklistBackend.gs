@@ -109,7 +109,7 @@ function saveDynamicReport(dataObj) {
     
     const failItems = dataObj.answers.filter(a => a.value === 'NO');
     const failCount = failItems.length;
-    const resultSummary = failCount > 0 ? (failCount + " Lỗi (Fail)"a) : "Đạt (Pass)";
+    const resultSummary = failCount > 0 ? (failCount + " Lỗi (Fail)") : "Đạt (Pass)";
 
     // Lưu vào Sheet
     sheet.appendRow([
@@ -121,6 +121,9 @@ function saveDynamicReport(dataObj) {
       JSON.stringify(dataObj.answers)
     ]);
 
+    // GỌI HÀM SẮP XẾP NGAY SAU KHI LƯU DỮ LIỆU
+    sortChecklistRecords();
+
     // Không gửi Email, chỉ trả về thông báo thành công
     return { success: true, message: "Đã lưu báo cáo thành công!" };
     
@@ -130,3 +133,27 @@ function saveDynamicReport(dataObj) {
 }
 
 // Đã loại bỏ hàm sendAlertEmail
+
+/**
+ * Hàm tự động sắp xếp phiếu theo thời gian
+ * Càng gần hiện tại thì nằm bên dưới (Tăng dần - ascending: true)
+ */
+function sortChecklistRecords() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Checklist_Records");
+  
+  if (!sheet) return;
+  
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  
+  // Kiểm tra nếu có dữ liệu (lớn hơn 1 vì dòng 1 là Tiêu đề)
+  if (lastRow > 1) {
+    // Lấy vùng dữ liệu từ dòng 2 (bỏ dòng tiêu đề) đến dòng cuối cùng
+    var range = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    
+    // Cột 2 là cột "Thời gian". 
+    // ascending: true -> Sắp xếp tăng dần (Phiếu cũ ở trên, phiếu mới nhất ở dưới cùng)
+    range.sort({column: 2, ascending: true});
+  }
+}
