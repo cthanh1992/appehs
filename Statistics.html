@@ -4,70 +4,57 @@
   <base target="_top">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
-    /* --- CSS CŨ --- */
+    /* --- CSS CORE --- */
     .tab-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
     .tab-item { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s; cursor: pointer; user-select: none; }
     .tab-item i { margin-right: 6px; font-size: 14px; }
     .tab-item.active { background: #059669; color: white; border-color: #059669; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2); transform: translateY(-1px); }
     
-    /* --- [MỚI] CSS CHO NÚT KHU VỰC (AREA BUTTONS) --- */
     .area-container { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; padding-bottom: 4px; -ms-overflow-style: none; scrollbar-width: none; }
     .area-container::-webkit-scrollbar { display: none; }
-    
-    .area-btn { 
-        white-space: nowrap; flex-shrink: 0;
-        padding: 6px 12px; border-radius: 20px; 
-        font-size: 11px; font-weight: 600; 
-        color: #64748b; background: white; border: 1px solid #e2e8f0; 
-        transition: all 0.2s; cursor: pointer; 
-    }
-    /* Nút đang chọn (Active) - Màu cam cho khác biệt với Tab chính */
-    .area-btn.active { 
-        background: #f97316; color: white; border-color: #f97316; 
-        box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2); 
-    }
+    .area-btn { white-space: nowrap; flex-shrink: 0; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #64748b; background: white; border: 1px solid #e2e8f0; transition: all 0.2s; cursor: pointer; }
+    .area-btn.active { background: #f97316; color: white; border-color: #f97316; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2); }
 
-    /* Các CSS cũ khác giữ nguyên... */
     .stat-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.1s; }
     .stat-card:active { transform: scale(0.98); background: #f8fafc; }
     .border-l-status { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    
+    /* Màu sắc trạng thái chi tiết */
     .status-pass .border-l-status { background: #10b981; }
     .status-fail .border-l-status { background: #ef4444; }
+    .status-missing .border-l-status { background: #cbd5e1; }
+
     .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
     .card-location { font-size: 15px; font-weight: 700; color: #1e293b; line-height: 1.4; }
     .card-area { font-size: 12px; color: #64748b; font-weight: 500; display: flex; align-items: center; margin-top: 2px; }
     .divider { height: 1px; background: #f1f5f9; margin: 10px 0; }
     .card-footer { display: flex; justify-content: space-between; align-items: center; }
+    
     .inspector-info { display: flex; align-items: center; gap: 8px; }
     .inspector-avatar { width: 24px; height: 24px; background: #e2e8f0; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #64748b; font-size: 12px; }
     .inspector-name { font-size: 12px; font-weight: 600; color: #334155; }
     .check-time { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    
     .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
     .badge-pass { background: #d1fae5; color: #047857; }
     .badge-fail { background: #fee2e2; color: #b91c1c; }
-    .error-count { background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; margin-left: 6px; }
-    .time-btn { flex: 1; padding: 10px 0; border-radius: 10px; font-size: 12px; font-weight: 600; background: #f8fafc; color: #64748b; border: 1px solid transparent; }
+    .badge-missing { background: #f1f5f9; color: #64748b; }
+
+    .time-btn { flex: 1; padding: 10px 0; border-radius: 10px; font-size: 11px; font-weight: 600; background: #f8fafc; color: #64748b; border: 1px solid transparent; }
     .time-btn.active { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
 
+    /* Modal */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; justify-content: center; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(2px); }
     .modal-overlay.open { opacity: 1; pointer-events: auto; }
-    .modal-content-sheet { background: white; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; max-height: 85vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+    .modal-content-sheet { background: white; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; max-height: 85vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
     .modal-overlay.open .modal-content-sheet { transform: translateY(0); }
     .modal-header { padding: 16px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
     .modal-body { padding: 16px; overflow-y: auto; }
     .issue-item { background: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
     .issue-q { font-size: 13px; font-weight: 700; color: #7f1d1d; margin-bottom: 4px; }
-    .issue-note { font-size: 12px; color: #4b5563; background: white; padding: 6px; border-radius: 6px; border: 1px solid #e5e7eb; display: inline-block; margin-top: 4px;}
-    .issue-imgs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
-    .issue-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid #e5e7eb; cursor: zoom-in; flex-shrink: 0; background-color: #f3f4f6; }
-    .modal-close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #64748b; }
-    .no-issue { text-align: center; padding: 20px; color: #059669; font-weight: 500; background: #ecfdf5; border-radius: 12px; border: 1px dashed #10b981; }
-
-    .modal-image-viewer { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-    .modal-image-content { width: auto; height: auto; max-width: 95%; max-height: 95%; object-fit: contain; animation-name: zoom; animation-duration: 0.4s; }
-    @keyframes zoom { from {transform:scale(0)} to {transform:scale(1)} }
-    .close-img-btn { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; transition: 0.3s; cursor: pointer; }
-    @media only screen and (max-width: 700px){ .modal-image-content { width: 100%; } .modal-image-viewer { padding-top: 50%; } }
+    .modal-close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #64748b; }
+    
+    .no-scrollbar::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans select-none overflow-hidden">
@@ -80,16 +67,20 @@
       </div>
       <div id="checklist-tabs" class="tab-container"></div>
       
-      <div id="area-btns-wrapper" class="hidden mt-2 animate-fade-in">
-        <div id="area-list" class="area-container">
-           </div>
+      <div id="area-btns-wrapper" class="hidden mt-2">
+        <div id="area-list" class="area-container"></div>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto pr-1 pb-20 no-scrollbar">
-      <div id="time-section" class="hidden mb-4 animate-fade-in">
-        <div class="flex gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100" id="time-btns-container"></div>
+      <div id="time-section" class="hidden mb-4">
+        <div class="flex gap-1.5 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100" id="time-btns-container"></div>
+        
         <div id="picker-container" class="hidden mt-2 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+            <div id="picker-date" class="hidden flex items-center gap-2">
+                <span class="text-[10px] text-gray-500 font-medium whitespace-nowrap">Chọn ngày:</span>
+                <input type="date" id="inp-date" class="w-full p-1.5 border rounded text-xs bg-gray-50" onchange="loadData('DATE')">
+            </div>
             <div id="picker-week" class="hidden flex items-center gap-2">
                 <span class="text-[10px] text-gray-500 font-medium whitespace-nowrap">Tuần chứa ngày:</span>
                 <input type="date" id="inp-week" class="w-full p-1.5 border rounded text-xs bg-gray-50" onchange="loadData('WEEK')">
@@ -103,17 +94,12 @@
                     <div class="w-1/2"><span class="text-[10px] text-gray-400">Từ</span><input type="date" id="d-start" class="w-full p-1.5 border rounded text-xs bg-gray-50"></div>
                     <div class="w-1/2"><span class="text-[10px] text-gray-400">Đến</span><input type="date" id="d-end" class="w-full p-1.5 border rounded text-xs bg-gray-50"></div>
                 </div>
-                <button onclick="loadData('CUSTOM')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow hover:bg-emerald-700">Xác nhận</button>
+                <button onclick="loadData('CUSTOM')" class="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">Xác nhận</button>
             </div>
         </div>
       </div>
 
-      <div id="result-list" class="space-y-3">
-        <div class="flex flex-col items-center justify-center h-40 text-gray-300">
-          <i class="ph ph-hand-tap text-4xl mb-2 opacity-40"></i>
-          <p class="text-xs font-medium">Chọn phiếu để xem dữ liệu</p>
-        </div>
-      </div>
+      <div id="result-list" class="space-y-3"></div>
     </div>
   </div>
 
@@ -130,58 +116,35 @@
     </div>
   </div>
 
-  <div id="imageModal" class="modal-image-viewer" onclick="closeModal()">
-    <span class="close-img-btn" onclick="closeModal()">&times;</span>
-    <img class="modal-image-content" id="img01" referrerpolicy="no-referrer">
-  </div>
-
   <script>
     var gStatsMenuData = [];
     var gStatsCurrentChecklistId = null;
     var gStatsHistoryData = []; 
-    var gCurrentTimeType = 'MONTH'; 
-    var gCurrentArea = 'ALL'; // Mặc định là Tất cả
+    var gCurrentTimeType = 'DATE'; 
+    var gCurrentArea = 'ALL';
 
-    var FREQUENCY_MAP = {
-      'CHECKPLANT': 'DAILY', 'CHECKWAREHOUSE': 'DAILY',
-      'CHECKLAB': 'WEEKLY', 'CHECKHR': 'MONTHLY', 'CHECKNBC': 'MONTHLY'
-    };
-
-    // --- KHỞI CHẠY ---
+    // Khởi động: Lấy danh sách menu
     google.script.run
       .withSuccessHandler(renderTabs)
-      .withFailureHandler(function(err) {
-          document.getElementById('loading-tabs').innerHTML = '<span class="text-red-500">Lỗi: ' + err + '</span>';
-      })
       .getMenuData();
 
     function renderTabs(json) {
-      var loader = document.getElementById('loading-tabs');
-      if(loader) loader.classList.add('hidden');
-
-      try { gStatsMenuData = JSON.parse(json);
-      } catch (e) { console.error(e); return; }
+      document.getElementById('loading-tabs').classList.add('hidden');
+      try { gStatsMenuData = JSON.parse(json); } catch (e) { return; }
       
       var container = document.getElementById('checklist-tabs');
-      if(!container) return;
       container.innerHTML = '';
       
       var list = gStatsMenuData.filter(function(i) { return i.type === 'LINK' && i.action === 'OPEN_CHECKLIST'; });
-      if (list.length === 0) { container.innerHTML = '<span class="text-xs text-red-400">Không có dữ liệu Menu</span>'; return; }
-
       list.forEach(function(item, index) {
         var btn = document.createElement('div');
         btn.className = 'tab-item';
         
-        // Đổi tên ngắn
-        if (item.name === 'Kiểm tra EHS nhà máy') item.name = 'Nhà máy';
-        if (item.name === 'Kiểm tra EHS kho') item.name = 'Kho';
-        if (item.name === 'Kiểm tra EHS QC-LAB') item.name = 'QC-LAB';
-        if (item.name === 'Kiểm tra EHS Văn phòng') item.name = 'Văn phòng';
-        if (item.name === 'Kiểm tra EHS-NBC') item.name = 'NBC';
-
+        // Rút gọn tên hiển thị
+        var shortName = item.name.replace('Kiểm tra EHS ', '').replace('Kiểm tra ', '');
         var iconClass = item.icon ? 'ph-' + item.icon : 'ph-clipboard-text';
-        btn.innerHTML = '<i class="ph ' + iconClass + '"></i>' + item.name;
+        
+        btn.innerHTML = '<i class="ph ' + iconClass + '"></i>' + shortName;
         btn.onclick = function() { onTabClick(item.id, btn); };
         container.appendChild(btn);
         if(index === 0) btn.click();
@@ -190,304 +153,191 @@
 
     function onTabClick(id, btnElement) {
       gStatsCurrentChecklistId = id;
-      gCurrentArea = 'ALL'; // Reset về tất cả khi đổi Tab
-
+      gCurrentArea = 'ALL';
       document.querySelectorAll('.tab-item').forEach(function(b) { b.classList.remove('active'); });
       btnElement.classList.add('active');
       
-      // 1. Tải danh sách Khu vực (Và vẽ nút bấm)
       loadAreaButtons(id);
-
-      // 2. Render nút thời gian
+      
       var item = gStatsMenuData.find(function(i) { return i.id === id; });
-      var freq = FREQUENCY_MAP[id] || "MONTHLY"; 
-      if (!FREQUENCY_MAP[id]) {
-          var checkStr = ((item.note||"") + " " + (item.frequency||"")).toUpperCase();
-          if (checkStr.includes("DAILY")) freq = "DAILY";
-          else if (checkStr.includes("WEEKLY")) freq = "WEEKLY";
+      var freq = 'DAILY';
+      if (item && item.note) {
+          if (item.note.includes('WEEKLY')) freq = 'WEEKLY';
+          else if (item.note.includes('MONTHLY')) freq = 'MONTHLY';
       }
       renderTimeButtons(freq);
     }
 
-    // [MỚI] Hàm tải danh sách Khu vực và vẽ nút
     function loadAreaButtons(checklistId) {
-        var container = document.getElementById('area-list');
-        var wrapper = document.getElementById('area-btns-wrapper');
-        
-        // Hiện khung chứa nút
-        wrapper.classList.remove('hidden');
-        // Tạo nút giả "Đang tải..."
-        container.innerHTML = '<div class="area-btn">Loading...</div>';
+      var container = document.getElementById('area-list');
+      var wrapper = document.getElementById('area-btns-wrapper');
+      wrapper.classList.remove('hidden');
+      container.innerHTML = '<div class="area-btn">Đang tải...</div>';
 
-        google.script.run.withSuccessHandler(function(areas) {
-            container.innerHTML = ''; // Xóa cũ
-            
-            // 1. Luôn thêm nút "Tất cả" đầu tiên
-            var allBtn = document.createElement('div');
-            allBtn.className = 'area-btn active'; // Mặc định Active
-            allBtn.innerText = 'Tất cả';
-            allBtn.onclick = function() { onAreaClick('ALL', allBtn); };
-            container.appendChild(allBtn);
+      google.script.run.withSuccessHandler(function(areas) {
+          container.innerHTML = '';
+          var allBtn = document.createElement('div');
+          allBtn.className = 'area-btn active';
+          allBtn.innerText = 'Tất cả';
+          allBtn.onclick = function() { onAreaClick('ALL', allBtn); };
+          container.appendChild(allBtn);
 
-            // 2. Thêm các nút Khu vực
-            if (areas && areas.length > 0) {
-                areas.forEach(function(area) {
-                    var btn = document.createElement('div');
-                    btn.className = 'area-btn';
-                    btn.innerText = area;
-                    btn.onclick = function() { onAreaClick(area, btn); };
-                    container.appendChild(btn);
-                });
-            }
-        }).getChecklistAreas(checklistId);
+          if (areas && areas.length > 0) {
+              areas.forEach(function(area) {
+                  var btn = document.createElement('div');
+                  btn.className = 'area-btn';
+                  btn.innerText = area;
+                  btn.onclick = function() { onAreaClick(area, btn); };
+                  container.appendChild(btn);
+              });
+          }
+      }).getChecklistAreas(checklistId);
     }
 
-    // [MỚI] Khi bấm nút Khu vực
     function onAreaClick(areaVal, btnElement) {
-        gCurrentArea = areaVal;
-        
-        // Đổi màu Active
-        document.querySelectorAll('.area-btn').forEach(function(b) { b.classList.remove('active'); });
-        btnElement.classList.add('active');
-
-        // Tải lại dữ liệu
-        loadData(gCurrentTimeType);
+      gCurrentArea = areaVal;
+      document.querySelectorAll('.area-btn').forEach(function(b) { b.classList.remove('active'); });
+      btnElement.classList.add('active');
+      loadData(gCurrentTimeType);
     }
 
     function renderTimeButtons(freq) {
-      var section = document.getElementById('time-section');
       var container = document.getElementById('time-btns-container');
-      section.classList.remove('hidden');
+      document.getElementById('time-section').classList.remove('hidden');
       document.getElementById('picker-container').classList.add('hidden');
-      document.getElementById('result-list').innerHTML = '';
 
-      var html = '';
-      if (freq === 'DAILY') {
-        html += '<button onclick="selectTime(\'TODAY\', this)" class="time-btn">Hôm nay</button>';
-        html += '<button onclick="selectTime(\'WEEK\', this)" class="time-btn">Tuần</button>';
-        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
-      } else if (freq === 'WEEKLY') {
-        html += '<button onclick="selectTime(\'WEEK\', this)" class="time-btn">Tuần</button>';
-        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
-      } else {
-        html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
-      }
-      html += '<button onclick="selectTime(\'CUSTOM\', this)" class="time-btn">📅 Tùy chọn</button>';
+      var html = '<button onclick="selectTime(\'DATE\', this)" class="time-btn">Chọn ngày</button>';
+      html += '<button onclick="selectTime(\'WEEK\', this)" class="time-btn">Tuần</button>';
+      html += '<button onclick="selectTime(\'MONTH\', this)" class="time-btn">Tháng</button>';
+      html += '<button onclick="selectTime(\'CUSTOM\', this)" class="time-btn">Tùy chọn</button>';
       container.innerHTML = html;
       
-      // Thiết lập ngày mặc định cho picker
-      var today = new Date();
-      var yyyy = today.getFullYear();
-      var mm = String(today.getMonth() + 1).padStart(2, '0');
-      var dd = String(today.getDate()).padStart(2, '0');
+      var now = new Date();
+      var yyyy = now.getFullYear();
+      var mm = String(now.getMonth() + 1).padStart(2, '0');
+      var dd = String(now.getDate()).padStart(2, '0');
+      document.getElementById('inp-date').value = yyyy + '-' + mm + '-' + dd;
       document.getElementById('inp-week').value = yyyy + '-' + mm + '-' + dd;
       document.getElementById('inp-month').value = yyyy + '-' + mm;
 
-      var firstBtn = container.querySelector('button');
-      if(firstBtn) firstBtn.click();
+      container.querySelector('button').click();
     }
 
-    // Hàm điều hướng UI Picker thay cho toggleCustom/activeTimeBtn
     function selectTime(type, btn) {
         document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
         if(btn) btn.classList.add('active');
 
         var pickerContainer = document.getElementById('picker-container');
-        document.getElementById('picker-week').classList.add('hidden');
-        document.getElementById('picker-month').classList.add('hidden');
-        document.getElementById('picker-custom').classList.add('hidden');
+        ['date','week','month','custom'].forEach(t => document.getElementById('picker-'+t).classList.add('hidden'));
 
-        if (type === 'TODAY') {
-            pickerContainer.classList.add('hidden');
-            loadData('TODAY');
-        } else {
-            pickerContainer.classList.remove('hidden');
-            if (type === 'WEEK') {
-                document.getElementById('picker-week').classList.remove('hidden');
-                loadData('WEEK');
-            } else if (type === 'MONTH') {
-                document.getElementById('picker-month').classList.remove('hidden');
-                loadData('MONTH');
-            } else if (type === 'CUSTOM') {
-                document.getElementById('picker-custom').classList.remove('hidden');
-            }
-        }
+        pickerContainer.classList.remove('hidden');
+        document.getElementById('picker-' + type.toLowerCase()).classList.remove('hidden');
+        if (type !== 'CUSTOM') loadData(type);
     }
 
     function loadData(type) {
       gCurrentTimeType = type;
       var resDiv = document.getElementById('result-list');
+      resDiv.innerHTML = '<div class="h-24 bg-white rounded-xl animate-pulse"></div>';
       
-      if (type === 'TODAY') {
-        var day = new Date().getDay();
-        if (day === 0 || day === 6) { 
-          resDiv.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-gray-400 border border-dashed rounded-xl bg-white"><i class="ph-duotone ph-coffee text-5xl mb-3 text-orange-400"></i><p class="font-bold text-gray-600">Ngày nghỉ</p></div>';
-          return;
-        }
-      }
-      
-      resDiv.innerHTML = '<div class="space-y-3"><div class="h-24 bg-white rounded-xl animate-pulse"></div></div>';
       var s, e;
-      
-      // Xử lý tạo Start Date / End Date theo Picker
-      if (type === 'WEEK') {
-         var dVal = document.getElementById('inp-week').value;
-         if(!dVal) return;
-         var parts = dVal.split('-');
-         var baseDate = new Date(parts[0], parts[1]-1, parts[2]);
-         var day = baseDate.getDay();
-         var diff = baseDate.getDate() - day + (day == 0 ? -6 : 1); // Đưa về Thứ 2
-         s = new Date(baseDate.setDate(diff));
-         e = new Date(s); e.setDate(s.getDate() + 6); // Cộng 6 ngày thành Chủ Nhật
+      if (type === 'DATE') {
+         var d = document.getElementById('inp-date').value;
+         if(!d) return; s = new Date(d); e = new Date(d);
+      } else if (type === 'WEEK') {
+         var d = new Date(document.getElementById('inp-week').value);
+         var day = d.getDay(), diff = d.getDate() - day + (day == 0 ? -6:1);
+         s = new Date(d.setDate(diff)); e = new Date(s); e.setDate(s.getDate() + 6);
       } else if (type === 'MONTH') {
-         var mVal = document.getElementById('inp-month').value;
-         if(!mVal) return;
-         var mParts = mVal.split('-');
-         s = new Date(mParts[0], mParts[1]-1, 1);
-         e = new Date(mParts[0], mParts[1], 0); // Ngày cuối của tháng
-      } else if (type === 'CUSTOM') {
-         var sVal = document.getElementById('d-start').value;
-         var eVal = document.getElementById('d-end').value;
-         if(!sVal || !eVal) return;
-         var sP = sVal.split('-'); var eP = eVal.split('-');
-         s = new Date(sP[0], sP[1]-1, sP[2]);
-         e = new Date(eP[0], eP[1]-1, eP[2]);
-      }
-      
-      // Đóng gói tham số gửi lên Google Apps Script: "LOẠI,Ngày Bắt Đầu,Ngày Kết Thúc"
-      var timeParam = type;
-      if (type !== 'TODAY') {
-          var yyyyS = s.getFullYear(), mmS = String(s.getMonth()+1).padStart(2,'0'), ddS = String(s.getDate()).padStart(2,'0');
-          var yyyyE = e.getFullYear(), mmE = String(e.getMonth()+1).padStart(2,'0'), ddE = String(e.getDate()).padStart(2,'0');
-          timeParam = type + ',' + yyyyS+'-'+mmS+'-'+ddS + ',' + yyyyE+'-'+mmE+'-'+ddE;
+         var m = document.getElementById('inp-month').value.split('-');
+         s = new Date(m[0], m[1]-1, 1); e = new Date(m[0], m[1], 0);
+      } else {
+         s = new Date(document.getElementById('d-start').value);
+         e = new Date(document.getElementById('d-end').value);
       }
 
+      var timeParam = type + ',' + formatDate(s) + ',' + formatDate(e);
       google.script.run
         .withSuccessHandler(renderResults)
-        .withFailureHandler(function(err) {
-           resDiv.innerHTML = '<div class="text-red-500 text-center p-4">Lỗi tải dữ liệu: ' + err + '</div>';
-        })
         .getTrackingStats(timeParam, gCurrentArea);
     }
 
-    function renderResults(json) {
-      try {
-        var response = JSON.parse(json);
-        var currentData = response[gStatsCurrentChecklistId]; 
-        gStatsHistoryData = currentData ? currentData.rows : [];
-      } catch(e) {
-        gStatsHistoryData = [];
-      }
-      
-      var div = document.getElementById('result-list');
-      if (!gStatsHistoryData || gStatsHistoryData.length === 0) { 
-        div.innerHTML = '<div class="flex flex-col items-center justify-center py-10 text-gray-300"><i class="ph-duotone ph-files text-4xl mb-2"></i><p class="text-xs">Chưa có dữ liệu</p></div>';
-        return; 
-      }
-      
-      var html = '';
-      var isDetail = gStatsHistoryData[0].hasOwnProperty('inspector');
-
-      gStatsHistoryData.forEach(function(item, index) {
-        if (isDetail) {
-            // VIEW CHI TIẾT
-            var statusClass = (item.result === 'FAIL') ? 'status-fail' : 'status-pass';
-            var badgeClass = (item.result === 'FAIL') ? 'badge-fail' : 'badge-pass';
-            var iconClass = (item.result === 'FAIL') ? 'ph-warning-circle' : 'ph-check-circle';
-            var errorHtml = (item.errorCount > 0) ? '<span class="error-count">' + item.errorCount + ' lỗi</span>' : '';
-            
-            var subInfo = item.result === 'MISSING' ? 
-                '<div class="text-xs text-orange-500 font-bold"><i class="ph-fill ph-warning"></i> Chưa kiểm tra</div>' :
-                '<div class="inspector-info"><div class="inspector-avatar"><i class="ph-fill ph-user"></i></div><div><div class="inspector-name">' + (item.inspector || 'N/A') + '</div><div class="check-time">' + item.time + '</div></div></div>';
-            var cardStatus = item.result === 'MISSING' ? 'border-l-4 border-orange-300' : (statusClass);
-            
-            html += '<div class="stat-card ' + cardStatus + '" onclick="openModal(' + index + ')">' +
-                    (item.result !== 'MISSING' ? '<div class="border-l-status"></div>' : '') +
-                    '<div class="card-header">' +
-                      '<div><div class="card-location">' + (item.loc || 'N/A') + '</div><div class="card-area"><i class="ph-fill ph-map-pin mr-1"></i> ' + 
-                      (item.area || '...') + '</div></div>' +
-                      (item.result !== 'MISSING' ? '<div class="status-badge ' + badgeClass + '"><i class="ph-fill ' + iconClass + '"></i> ' + item.result + ' ' + errorHtml + '</div>' : '') +
-                    '</div>' +
-                    '<div class="divider"></div>' +
-                    '<div class="card-footer">' + subInfo + (item.result !== 'MISSING' ? '<div class="text-xs text-gray-400"><i class="ph-bold ph-caret-right"></i></div>' : '') + '</div>' +
-                    '</div>';
-        } else {
-            // VIEW TỔNG HỢP
-            var percent = item.ratio;
-            var color = percent >= 100 ? 'bg-emerald-500' : (percent >= 50 ? 'bg-blue-500' : 'bg-orange-500');
-            html += '<div class="stat-card">' +
-                    '<div class="flex justify-between items-end mb-2">' +
-                        '<div><div class="card-location">' + item.loc + '</div><div class="card-area">' + item.area + '</div></div>' +
-                        '<div class="text-2xl font-bold text-slate-700">' + item.current + '<span class="text-xs text-gray-400 font-normal">/' + 
-                        item.target + '</span></div>' +
-                    '</div>' +
-                    '<div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">' +
-                        '<div class="' + color + ' h-2.5 rounded-full" style="width: ' + (percent > 100 ? 100 : percent) + '%"></div>' +
-                        '</div>' +
-                    '<div class="text-right text-[10px] text-gray-500">Đạt ' + percent + '% kế hoạch</div>' +
-                    '</div>';
-        }
-      });
-      div.innerHTML = html;
+    function formatDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
-    function openModal(index) {
-      var item = gStatsHistoryData[index];
-      if (!item || item.result === 'MISSING') return; 
-      
-      document.getElementById('m-location').innerText = item.loc + " (" + item.area + ")";
-      document.getElementById('m-time').innerText = item.inspector + ' • ' + item.time;
+    function renderResults(json) {
+      var resDiv = document.getElementById('result-list');
+      try {
+        var response = JSON.parse(json);
+        var data = response[gStatsCurrentChecklistId];
+        if (!data || data.rows.length === 0) {
+            resDiv.innerHTML = '<div class="text-center py-10 text-gray-400 text-xs">Không có dữ liệu</div>';
+            return;
+        }
+
+        var html = '';
+        data.rows.forEach(function(item, idx) {
+            if (data.viewMode === 'DETAIL') {
+                var status = item.result; // PASS, FAIL, MISSING
+                var sClass = status === 'PASS' ? 'status-pass' : (status === 'FAIL' ? 'status-fail' : 'status-missing');
+                var bClass = status === 'PASS' ? 'badge-pass' : (status === 'FAIL' ? 'badge-fail' : 'badge-missing');
+                var icon = status === 'PASS' ? 'ph-check-circle' : (status === 'FAIL' ? 'ph-warning-circle' : 'ph-minus-circle');
+                
+                html += '<div class="stat-card ' + sClass + '" onclick="openModal(' + idx + ')">' +
+                        '<div class="border-l-status"></div>' +
+                        '<div class="card-header">' +
+                            '<div><div class="card-location">' + item.loc + '</div><div class="card-area"><i class="ph ph-map-pin"></i> ' + item.area + '</div></div>' +
+                            '<div class="status-badge ' + bClass + '"><i class="ph ' + icon + '"></i> ' + status + '</div>' +
+                        '</div>' +
+                        '<div class="divider"></div>' +
+                        '<div class="card-footer">' +
+                            '<div class="inspector-info">' +
+                                '<div class="inspector-avatar"><i class="ph ph-user"></i></div>' +
+                                '<div><div class="inspector-name">' + item.inspector + '</div><div class="check-time">' + item.time + '</div></div>' +
+                            '</div>' +
+                            '<i class="ph ph-caret-right text-gray-300"></i>' +
+                        '</div></div>';
+            } else {
+                var color = item.ratio >= 100 ? 'bg-emerald-500' : (item.ratio > 0 ? 'bg-orange-400' : 'bg-gray-300');
+                html += '<div class="stat-card">' +
+                        '<div class="flex justify-between items-end mb-2">' +
+                            '<div><div class="card-location">' + item.loc + '</div><div class="card-area">' + item.area + '</div></div>' +
+                            '<div class="text-xl font-bold">' + item.current + '<span class="text-xs text-gray-400">/' + item.target + '</span></div>' +
+                        '</div>' +
+                        '<div class="w-full bg-gray-100 rounded-full h-2">' +
+                            '<div class="' + color + ' h-2 rounded-full" style="width:' + Math.min(item.ratio, 100) + '%"></div>' +
+                        '</div></div>';
+            }
+        });
+        resDiv.innerHTML = html;
+        gStatsHistoryData = data.rows;
+      } catch(e) { resDiv.innerHTML = 'Lỗi hiển thị'; }
+    }
+
+    function openModal(idx) {
+      var item = gStatsHistoryData[idx];
+      if (!item || item.result === 'MISSING') return;
+      document.getElementById('m-location').innerText = item.loc;
+      document.getElementById('m-time').innerText = item.time + ' - ' + item.inspector;
       var body = document.getElementById('m-body');
       
       if (!item.issues || item.issues.length === 0) {
-        body.innerHTML = '<div class="no-issue"><i class="ph-fill ph-check-circle text-2xl mb-1"></i><br>Không có lỗi nào</div>';
+        body.innerHTML = '<div class="text-center py-6 text-emerald-600 font-bold">✓ Hoàn hảo, không có lỗi</div>';
       } else {
-        var html = '';
-        item.issues.forEach(function(issue) {
-          var imgsHtml = '';
-          if (issue.images && issue.images.length > 0) {
-            imgsHtml = '<div class="issue-imgs">';
-            issue.images.forEach(function(url) {
-              var fileId = "";
-              var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-              if (match && match[1]) { fileId = match[1]; } 
-              else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) fileId = match[1]; }
-
-              if (fileId) {
-                var thumbLink = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w200";
-                imgsHtml += '<img src="' + thumbLink + '" class="issue-img" onclick="showModal(\'' + fileId + '\')" onerror="this.onerror=null;this.src=\'https://cdn-icons-png.flaticon.com/512/3342/3342137.png\'">';
-              } else {
-                imgsHtml += '<div class="issue-img flex items-center justify-center bg-gray-100 text-[10px] text-blue-600 cursor-pointer border" onclick="window.open(\'' + url + '\',\'_blank\')">Link</div>';
-              }
-            });
-            imgsHtml += '</div>';
-          }
-          var noteHtml = issue.note ? '<div class="issue-note"><i class="ph-bold ph-note-pencil"></i> ' + issue.note + '</div>' : '';
-          html += '<div class="issue-item"><div class="issue-q">' + issue.question + '</div><div class="text-xs text-red-600 font-bold mb-1"><i class="ph-fill ph-x-circle"></i> Kết quả: ' + issue.value + '</div>' + noteHtml + imgsHtml + '</div>';
+        var h = '';
+        item.issues.forEach(iss => {
+            h += '<div class="issue-item"><div class="issue-q">' + iss.question + '</div>' +
+                 '<div class="text-xs text-red-600 font-bold">KQ: ' + iss.value + '</div>';
+            if(iss.note) h += '<div class="text-xs text-gray-500 mt-1 italic">Ghi chú: ' + iss.note + '</div>';
+            h += '</div>';
         });
-        body.innerHTML = html;
+        body.innerHTML = h;
       }
       document.getElementById('detail-modal').classList.add('open');
     }
 
-    function showModal(fileId) {
-      var modal = document.getElementById("imageModal");
-      var modalImg = document.getElementById("img01");
-      modalImg.src = "";
-      var fullUrl = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w5000";
-      modal.style.display = "flex";
-      modalImg.src = fullUrl;
-    }
-
-    function closeModal() {
-        var imgModal = document.getElementById("imageModal");
-        if (imgModal && imgModal.style.display === "flex") {
-            imgModal.style.display = "none";
-            document.getElementById("img01").src = "";
-            return; 
-        }
-        document.getElementById('detail-modal').classList.remove('open');
-    }
+    function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
   </script>
 </body>
 </html>
