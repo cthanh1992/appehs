@@ -42,14 +42,32 @@ function getChecklistAreas(checklistId) { //
 } //
 
 // --- 2. HÀM CHÍNH: LẤY THỐNG KÊ ---
-function getTrackingStats(filterType, areaFilter) { //
-  try { //
-    var ss = SpreadsheetApp.getActiveSpreadsheet(); //
-    var sheetRecords = ss.getSheetByName("Checklist_Records"); //
-    var sheetMaster = ss.getSheetByName("Checklist_Master"); //
-    var sheetMenu = ss.getSheetByName("MenuData"); //
-    if (!sheetRecords || !sheetMaster || !sheetMenu) return JSON.stringify({ error: true, message: "Thiếu Sheet dữ liệu" }); //
-    
+// --- 2. HÀM CHÍNH: LẤY THỐNG KÊ ---
+function getTrackingStats(filterType, areaFilter) { 
+  try { 
+    var ss = SpreadsheetApp.getActiveSpreadsheet(); 
+    var sheetRecords = ss.getSheetByName("Checklist_Records"); 
+    var sheetMaster = ss.getSheetByName("Checklist_Master"); 
+    var sheetMenu = ss.getSheetByName("MenuData"); 
+    var sheetHolidays = ss.getSheetByName("Holidays"); 
+
+    if (!sheetRecords || !sheetMaster || !sheetMenu) return JSON.stringify({ error: true, message: "Thiếu Sheet dữ liệu" }); 
+
+    // --- LẤY DANH SÁCH NGÀY NGHỈ ---
+    var holidayMap = {};
+    if (sheetHolidays) {
+          var hData = sheetHolidays.getDataRange().getValues();
+        hData.shift(); // Bỏ header
+        hData.forEach(r => {
+            if (r[0]) {
+                var d = new Date(r[0]);
+                if (!isNaN(d.getTime())) {
+                    var key = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+                    holidayMap[key] = true;
+                }
+            }
+        });
+    }
     // --- CONFIG & MAPPING ---
     const CONFIG = { //
       'CHECKPLANT':     { areaQ: 'Q01', locQ: 'Q02', masterQ: 'Q02', hasArea: true }, //
@@ -195,14 +213,14 @@ function getTrackingStats(filterType, areaFilter) { //
         // Xác định chế độ View dựa trên Loại (baseFilter) thay vì toàn bộ chuỗi
         if (baseFilter === 'TODAY') viewMode = 'DETAIL';
         else if (baseFilter === 'WEEK') {
-            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate); }
+            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate, holidayMap); }
             else viewMode = 'DETAIL';
         } else if (baseFilter === 'MONTH') {
-            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate); }
+            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate, holidayMap); }
             else if (freq === 'WEEKLY') { viewMode = 'AGGREGATE'; targetCount = 4; }
             else viewMode = 'DETAIL';
         } else if (baseFilter === 'CUSTOM') {
-            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate); }
+            if (freq === 'DAILY') { viewMode = 'AGGREGATE'; targetCount = countWorkingDays(startDate, endDate, holidayMap); }
             else viewMode = 'DETAIL';
         }
 
@@ -263,17 +281,21 @@ function getTrackingStats(filterType, areaFilter) { //
 } //
 
 // --- HÀM PHỤ TRỢ ---
-function countWorkingDays(start, end) { //
-    var count = 0; //
-    var cur = new Date(start); //
-    while (cur <= end) { //
-        var day = cur.getDay(); //
-        if (day !== 0 && day !== 6) count++;  //
-        cur.setDate(cur.getDate() + 1); //
-    } //
-    return count > 0 ? count : 1; //
-} //
-
+function countWorkingDays(start, end, holidayMap) { 
+    var count = 0; 
+    var cur = new Date(start); 
+    while (cur <= end) { 
+        var day = cur.getDay(); 
+        var dateKey = cur.getFullYear() + "-" + cur.getMonth() + "-" + cur.getDate();
+        
+        // Chỉ đếm nếu không phải T7, CN VÀ không nằm trong danh sách ngày nghỉ
+        if (day !== 0 && day !== 6 && (!holidayMap || !holidayMap[dateKey])) {
+            count++;  
+        } 
+        cur.setDate(cur.getDate() + 1); 
+    } 
+    return count > 0 ? count : 1; 
+}
 function countUniqueDays(checks) { //
     if(!checks || checks.length === 0) return 0; //
     var days = {}; //
