@@ -33,15 +33,14 @@ function runLegalCheck() {
         var newStatus = "❓ KHÔNG TÌM THẤY DỮ LIỆU";
         var alertColor = "white"; 
 
-        // CẢI TIẾN QUAN TRỌNG: 
-        // Biểu thức Regex quét trực tiếp khóa legislationLegalForce, tự động bỏ qua các dấu escape \ của React
-        var forceRegex = /\\?"legislationLegalForce\\?"\s*:\s*\\?"([^"\\]+)\\?"/i;
+        // REGEX MỚI: Bỏ qua mọi dấu "\", chỉ nhắm thẳng vào cụm từ trạng thái chuẩn.
+        var forceRegex = /legislationLegalForce[^:]*:\s*[^a-zA-Z]*([a-zA-Z]+)/i;
         var match = html.match(forceRegex);
 
         if (match && match[1]) {
            var legalForce = match[1];
 
-           // Phân loại trạng thái chuẩn xác
+           // Phân loại trạng thái chuẩn xác theo biến lấy được
            if (legalForce === "InForce") {
               newStatus = "✅ Đang hiệu lực";
               alertColor = "#e6ffe6"; 
@@ -58,18 +57,8 @@ function runLegalCheck() {
               newStatus = "⏳ ĐANG CẬP NHẬT: " + legalForce;
               alertColor = "#fff5cc"; 
            }
-        } else {
-           // BƯỚC DỰ PHÒNG: Quét văn bản nếu không tìm thấy key chuẩn
-           // Giải mã toàn bộ HTML thô để kiểm tra text tiếng Việt
-           var decodeHtml = html.replace(/\\"/g, '"'); 
-           if (decodeHtml.indexOf('Còn hiệu lực') > -1 || decodeHtml.indexOf('Đang hiệu lực') > -1) {
-              newStatus = "✅ Đang hiệu lực";
-              alertColor = "#e6ffe6";
-           } else if (decodeHtml.indexOf('Hết hiệu lực toàn bộ') > -1 || decodeHtml.indexOf('Hết hiệu lực') > -1) {
-              newStatus = "⛔ HẾT HIỆU LỰC";
-              alertColor = "#ffcccc";
-           }
-        }
+        } 
+        // LƯU Ý: Đã xóa bỏ hoàn toàn lệnh Fallback tìm chữ "Còn hiệu lực" để tránh lỗi quét nhầm từ điển của website.
 
         // Ghi kết quả vào Sheet (Chỉ ghi khi có thay đổi)
         if (currentStatus !== newStatus) {
