@@ -33,13 +33,15 @@ function runLegalCheck() {
         var newStatus = "❓ KHÔNG TÌM THẤY DỮ LIỆU";
         var alertColor = "white"; 
 
-        var jsonRegex = /<script type="application\/ld\+json">(\{.*?"@type":"Legislation".*?\})<\/script>/is;
-        var match = html.match(jsonRegex);
+        // CẢI TIẾN QUAN TRỌNG: 
+        // Biểu thức Regex quét trực tiếp khóa legislationLegalForce, tự động bỏ qua các dấu escape \ của React
+        var forceRegex = /\\?"legislationLegalForce\\?"\s*:\s*\\?"([^"\\]+)\\?"/i;
+        var match = html.match(forceRegex);
 
         if (match && match[1]) {
-           var jsonData = JSON.parse(match[1]);
-           var legalForce = jsonData.legislationLegalForce;
+           var legalForce = match[1];
 
+           // Phân loại trạng thái chuẩn xác
            if (legalForce === "InForce") {
               newStatus = "✅ Đang hiệu lực";
               alertColor = "#e6ffe6"; 
@@ -57,22 +59,26 @@ function runLegalCheck() {
               alertColor = "#fff5cc"; 
            }
         } else {
-           if (html.indexOf('"legislationLegalForce":"InForce"') > -1) {
+           // BƯỚC DỰ PHÒNG: Quét văn bản nếu không tìm thấy key chuẩn
+           // Giải mã toàn bộ HTML thô để kiểm tra text tiếng Việt
+           var decodeHtml = html.replace(/\\"/g, '"'); 
+           if (decodeHtml.indexOf('Còn hiệu lực') > -1 || decodeHtml.indexOf('Đang hiệu lực') > -1) {
               newStatus = "✅ Đang hiệu lực";
               alertColor = "#e6ffe6";
-           } else if (html.indexOf('"legislationLegalForce":"NotInForce"') > -1) {
+           } else if (decodeHtml.indexOf('Hết hiệu lực toàn bộ') > -1 || decodeHtml.indexOf('Hết hiệu lực') > -1) {
               newStatus = "⛔ HẾT HIỆU LỰC";
               alertColor = "#ffcccc";
            }
         }
 
+        // Ghi kết quả vào Sheet (Chỉ ghi khi có thay đổi)
         if (currentStatus !== newStatus) {
             var cellStatus = sheet.getRange(i + 2, COL_STATUS_WRITE);
             cellStatus.setValue(newStatus);
             cellStatus.setBackground(alertColor);
         }
 
-        Utilities.sleep(1000);
+        Utilities.sleep(1000); // Nghỉ 1 giây để tránh lỗi block IP
 
       } catch (e) {
         console.error("Lỗi dòng " + (i+2) + ": " + e.toString());
