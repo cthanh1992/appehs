@@ -5,7 +5,7 @@ const CHECK_SHEET_ID = "1kNOZMlKPIsOYXiqhqVCAJBLiBirkqxCUf0dyCFTL4JA";
 const SHEET_NAME = "Legal_Database";
 
 // Cấu hình cột (Số thứ tự cột tính từ A=1)
-const COL_LINK_CHECK = 6; // Cột F (Link VBPL)
+const COL_LINK_CHECK = 6;   // Cột F (Link VBPL)
 const COL_STATUS_WRITE = 7; // Cột G (Ghi kết quả)
 
 function runLegalCheck() {
@@ -15,14 +15,13 @@ function runLegalCheck() {
 
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
-
   var range = sheet.getRange(2, 1, lastRow - 1, 10);
   var values = range.getValues();
-  
+
   for (var i = 0; i < values.length; i++) {
     var row = values[i];
     var link = row[COL_LINK_CHECK - 1]; 
-    var currentStatus = row[COL_STATUS_WRITE - 1]; 
+    var currentStatus = row[COL_STATUS_WRITE - 1];
 
     // Chỉ check những dòng có Link VBPL
     if (link && String(link).indexOf("vbpl.vn") > -1) {
@@ -30,46 +29,44 @@ function runLegalCheck() {
         var response = UrlFetchApp.fetch(link, {muteHttpExceptions: true});
         var html = response.getContentText();
 
-        // 1. KHOANH VÙNG TÌM KIẾM (Tránh đọc nhầm chân trang)
-        var searchZone = "";
-        var keywordIndex = html.indexOf("Tình trạng hiệu lực"); 
-        if (keywordIndex === -1) keywordIndex = html.indexOf("Hiệu lực:");
-        if (keywordIndex === -1) keywordIndex = html.indexOf("Trạng thái:");
-
-        if (keywordIndex !== -1) {
-            // Lấy 500 ký tự ngay sau nhãn để check
-            searchZone = html.substring(keywordIndex, keywordIndex + 500);
-        } else {
-            // Không tìm thấy nhãn thì quét đầu trang
-            searchZone = html.substring(0, 3000); 
-        }
-
-        // 2. PHÂN TÍCH TRẠNG THÁI (Logic ưu tiên)
-        var newStatus = "✅ Đang hiệu lực"; 
+        var newStatus = "❓ KHÔNG TÌM THẤY DỮ LIỆU";
         var alertColor = "white"; 
 
-        var lowerZone = searchZone.toLowerCase();
+        // PHÂN TÍCH THEO CẤU TRÚC JSON-LD MỚI CỦA VBPL.VN
+        // Quét tìm thẻ script chứa thuộc tính "@type":"Legislation"
+        var jsonRegex = /<script type="application\/ld\+json">(\{.*?"@type":"Legislation".*?\})<\/script>/is;
+        var match = html.match(jsonRegex);
 
-        // --- ƯU TIÊN 1: Kiểm tra "Một phần" trước ---
-        if (lowerZone.indexOf("hết hiệu lực một phần") > -1 || lowerZone.indexOf("ngưng hiệu lực một phần") > -1) {
-            newStatus = "⚠️ HẾT HIỆU LỰC 1 PHẦN";
-            alertColor = "#ffe0b2"; // Màu Cam nhạt
-        } 
-        // --- ƯU TIÊN 2: Kiểm tra Hết hiệu lực hoàn toàn ---
-        else if (lowerZone.indexOf("hết hiệu lực") > -1 || lowerZone.indexOf("hết thời hạn") > -1) {
-            newStatus = "⛔ HẾT HIỆU LỰC"; // Đổi icon cho khác biệt
-            alertColor = "#ffcccc"; // Màu Đỏ nhạt
-        } 
-        // --- Các trạng thái khác ---
-        else if (lowerZone.indexOf("bị hủy bỏ") > -1 || lowerZone.indexOf("văn bản thay thế") > -1) {
-            newStatus = "❌ BỊ HỦY BỎ/THAY THẾ";
-            alertColor = "#ffeb99"; // Màu Vàng
-        } else if (lowerZone.indexOf("sắp hết hiệu lực") > -1) {
-            newStatus = "⏳ SẮP HẾT HIỆU LỰC";
-            alertColor = "#fff5cc"; 
-        } else if (lowerZone.indexOf("chưa có hiệu lực") > -1) {
-             newStatus = "📅 CHƯA CÓ HIỆU LỰC";
-             alertColor = "#e6f7ff";
+        if (match && match[1]) {
+           var jsonData = JSON.parse(match[1]);
+           var legalForce = jsonData.legislationLegalForce;
+
+           // Phân loại trạng thái theo chuẩn Schema.org của VBPL
+           if (legalForce === "InForce") {
+              newStatus = "✅ Đang hiệu lực";
+              alertColor = "#e6ffe6"; // Xanh lá nhạt
+           } else if (legalForce === "NotInForce" || legalForce === "OutOfForce") {
+              newStatus = "⛔ HẾT HIỆU LỰC";
+              alertColor = "#ffcccc"; // Đỏ nhạt
+           } else if (legalForce === "PartiallyInForce") {
+              newStatus = "⚠️ HẾT HIỆU LỰC 1 PHẦN";
+              alertColor = "#ffe0b2"; // Cam nhạt
+           } else if (legalForce === "Pending") {
+              newStatus = "📅 CHƯA CÓ HIỆU LỰC";
+              alertColor = "#e6f7ff"; // Xanh dương nhạt
+           } else {
+              newStatus = "⏳ ĐANG CẬP NHẬT: " + legalForce;
+              alertColor = "#fff5cc"; // Vàng nhạt
+           }
+        } else {
+           // Dự phòng nếu VBPL trả về file HTML dạng SSR tĩnh
+           if (html.indexOf('"legislationLegalForce":"InForce"') > -1) {
+              newStatus = "✅ Đang hiệu lực";
+              alertColor = "#e6ffe6";
+           } else if (html.indexOf('"legislationLegalForce":"NotInForce"') > -1) {
+              newStatus = "⛔ HẾT HIỆU LỰC";
+              alertColor = "#ffcccc";
+           }
         }
 
         // 3. Ghi kết quả vào Sheet (Chỉ ghi khi có thay đổi)
@@ -80,7 +77,7 @@ function runLegalCheck() {
             console.log("Cập nhật dòng " + (i+2) + ": " + newStatus);
         }
 
-        Utilities.sleep(1000); // Nghỉ 1 giây
+        Utilities.sleep(1000); // Nghỉ 1 giây chống block IP
 
       } catch (e) {
         console.error("Lỗi dòng " + (i+2) + ": " + e.toString());
